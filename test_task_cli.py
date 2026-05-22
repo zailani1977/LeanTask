@@ -53,6 +53,7 @@ class TestTaskCLI(unittest.TestCase):
                 "description": "desc",
                 "tags": [],
                 "blocked_by": [],
+                "due_date": None,
                 "created_at": "2023-01-01T00:00:00Z",
                 "updated_at": "2023-01-01T00:00:00Z",
                 "raw_input": "raw",
@@ -78,13 +79,13 @@ class TestTaskCLI(unittest.TestCase):
         task_a = {
             "task_id": "aa-1111", "status": "open", "priority_score": 5.0,
             "project": "test", "title": "Task A", "description": "A",
-            "tags": [], "blocked_by": [], "created_at": "2023-01-01T00:00:00Z",
+            "tags": [], "blocked_by": [], "due_date": None, "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T00:00:00Z", "raw_input": "A", "history": [], "comments": []
         }
         task_b = {
             "task_id": "bb-2222", "status": "open", "priority_score": 4.0,
             "project": "test", "title": "Task B", "description": "B",
-            "tags": [], "blocked_by": ["aa-1111"], "created_at": "2023-01-01T00:00:00Z",
+            "tags": [], "blocked_by": ["aa-1111"], "due_date": None, "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T00:00:00Z", "raw_input": "B", "history": [], "comments": []
         }
         with open(task_db.ISSUES_FILE, 'w') as f:
@@ -136,7 +137,7 @@ class TestTaskCLI(unittest.TestCase):
         task = {
             "task_id": "cc-3333", "status": "open", "priority_score": 1.0,
             "project": "test", "title": "Task C", "description": "C",
-            "tags": [], "blocked_by": [], "created_at": "2023-01-01T00:00:00Z",
+            "tags": [], "blocked_by": [], "due_date": None, "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T00:00:00Z", "raw_input": "C", "history": [], "comments": []
         }
 
@@ -174,7 +175,7 @@ class TestTaskCLI(unittest.TestCase):
         task = {
             "task_id": "dd-4444", "status": "open", "priority_score": 0.0,
             "project": "untriaged", "title": "Bulk Test", "description": "Need tags",
-            "tags": [], "blocked_by": [], "created_at": "2023-01-01T00:00:00Z",
+            "tags": [], "blocked_by": [], "due_date": None, "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T00:00:00Z", "raw_input": "Bulk Test", "history": [], "comments": []
         }
         with open(task_db.ISSUES_FILE, 'w') as f:

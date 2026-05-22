@@ -20,6 +20,7 @@ def init_db(conn):
             description TEXT,
             tags TEXT, -- JSON array
             blocked_by TEXT, -- JSON array
+            due_date TEXT,
             created_at TEXT,
             updated_at TEXT,
             raw_input TEXT
@@ -77,9 +78,9 @@ def load_db_from_jsonl(conn):
                 cursor.execute("""
                     INSERT OR REPLACE INTO tasks (
                         task_id, parent_id, status, priority_score, project,
-                        title, description, tags, blocked_by, created_at,
+                        title, description, tags, blocked_by, due_date, created_at,
                         updated_at, raw_input
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     task["task_id"],
                     task.get("parent_id"),
@@ -90,6 +91,7 @@ def load_db_from_jsonl(conn):
                     task["description"],
                     json.dumps(task["tags"]),
                     json.dumps(task["blocked_by"]),
+                    task.get("due_date"),
                     task["created_at"],
                     task["updated_at"],
                     task["raw_input"]

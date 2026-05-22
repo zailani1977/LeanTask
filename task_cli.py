@@ -3,7 +3,7 @@ import sys
 import argparse
 
 from task_cli_capture import capture
-from task_cli_workbench import search, comment, state
+from task_cli_workbench import search, comment, state, due, list_tasks
 from task_cli_report import report
 from task_sync import sync_issues
 from task_cli_bulk import export_tasks, import_tasks
@@ -30,6 +30,15 @@ def main():
     state_parser.add_argument("task_id", type=str)
     state_parser.add_argument("state", type=str, choices=["open", "in_progress", "blocked", "deferred", "closed"])
 
+    # due
+    due_parser = subparsers.add_parser("due", help="Update the due date of a task")
+    due_parser.add_argument("task_id", type=str)
+    due_parser.add_argument("date", type=str, help="Due date (e.g. YYYY-MM-DD)")
+
+    # list
+    list_parser = subparsers.add_parser("list", help="List tasks by status")
+    list_parser.add_argument("status", type=str, choices=["all", "open", "in_progress", "blocked", "deferred", "closed"], help="Task status to filter by")
+
     # report
     subparsers.add_parser("report", help="Print daily report")
 
@@ -54,6 +63,10 @@ def main():
         comment(args.task_id, args.text)
     elif args.command == "state":
         state(args.task_id, args.state)
+    elif args.command == "due":
+        due(args.task_id, args.date)
+    elif args.command == "list":
+        list_tasks(args.status)
     elif args.command == "report":
         report()
     elif args.command == "sync":
