@@ -13,10 +13,10 @@ def export_tasks(status=None):
 
     if status:
         # Fetch filtered
-        cursor.execute("SELECT task_id, parent_id, status, priority_score, project, title, description, tags, blocked_by, created_at, updated_at, raw_input FROM tasks WHERE status = ?", (status,))
+        cursor.execute("SELECT task_id, parent_id, status, priority_score, project, title, description, tags, blocked_by, due_date, created_at, updated_at, raw_input FROM tasks WHERE status = ?", (status,))
     else:
         # Fetch all
-        cursor.execute("SELECT task_id, parent_id, status, priority_score, project, title, description, tags, blocked_by, created_at, updated_at, raw_input FROM tasks")
+        cursor.execute("SELECT task_id, parent_id, status, priority_score, project, title, description, tags, blocked_by, due_date, created_at, updated_at, raw_input FROM tasks")
 
     rows = cursor.fetchall()
 
@@ -34,9 +34,10 @@ def export_tasks(status=None):
             "description": r[6],
             "tags": json.loads(r[7]) if r[7] else [],
             "blocked_by": json.loads(r[8]) if r[8] else [],
-            "created_at": r[9],
-            "updated_at": r[10],
-            "raw_input": r[11],
+            "due_date": r[9],
+            "created_at": r[10],
+            "updated_at": r[11],
+            "raw_input": r[12],
             # Fetch minimal history/comments just to pass validation
             "history": [],
             "comments": []

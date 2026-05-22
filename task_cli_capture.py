@@ -24,6 +24,7 @@ def capture(raw_string):
         "description": "Captured raw input.",
         "tags": [],
         "blocked_by": [],
+        "due_date": None,
         "created_at": now,
         "updated_at": now,
         "raw_input": raw_string,
