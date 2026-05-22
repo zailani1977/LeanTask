@@ -15,14 +15,14 @@ To enable fast, complex querying (like searching by keyword or computing blocker
 - **Rebuilding:** If `issues.jsonl` is newer, it means external changes (like a Git pull or a raw capture) occurred. The system instantly clears the SQLite tables, re-reads the JSON lines, strictly validates them against the JSON Schema using the `jsonschema` library, and rebuilds the tables.
 
 ### Git Union Merging
-`.gitattributes` configures Git to use the native `union` merge strategy for both `.jsonl` files. If two branches simultaneously add tasks, Git will automatically append both lines chronologically without prompting the user for a manual merge conflict resolution. Duplicate `task_id` rows are then merged gracefully via the conflict resolution logic.
+`.gitattributes` configures Git to use the native `union` merge strategy for `issues.jsonl`. If two branches simultaneously add tasks, Git will automatically append both lines chronologically without prompting the user for a manual merge conflict resolution. Duplicate `task_id` rows are then merged gracefully via the conflict resolution logic.
 
 ---
 
 ## 2. Capture Client (Tier 1) (`task_cli_capture.py`)
 
 **Goal:** Zero-latency task input.
-When a user runs `./task_cli.py capture <text>`, the application bypasses the entire SQLite database logic and Schema validation. It instantly wraps the raw string and a timestamp into a JSON object and appends it to `.tasks/capture.jsonl`. This ensures execution finishes in <15ms, completely offline.
+When a user runs `./task_cli.py capture <text>`, it instantly generates a valid JSON Schema skeleton (with a random UUID, default placeholder status, and preserves the raw string). It appends this JSON line directly to `.tasks/issues.jsonl`. This ensures execution finishes in <15ms, completely offline.
 
 ---
 
@@ -48,14 +48,11 @@ The logic dynamically cross-references blocker IDs against current task statuses
 
 ---
 
-## 5. AI Triage & Prioritization Loop (`task_loop.py`)
+## 5. Agent Bulk Operations (Triage API) (`task_cli_bulk.py`)
 
-This module acts as an asynchronous background worker.
-- **Monitoring:** It watches `.tasks/capture.jsonl` for new rows.
-- **AI Processing (Mocked):** When raw text is found, it formulates an extraction process to convert the unformatted string into a structured JSON Schema task, generating UUIDs and parsing tags.
-- **Urgency Formula:** It calculates priority using the topological formula:
-  `Urgency Score = (1.2 * Active) + (-2.0 * Blocked) + (0.8 * Priority) - e^(-0.1 * AgeInDays)`
-- **Commiting:** The structured task is appended to `issues.jsonl`, triggering downstream auto-hydration, and the processed line is purged from the raw buffer.
+To facilitate on-demand AI triage (e.g. via Copilot CLI or Gemini CLI), the system allows bulk interactions instead of a background daemon loop:
+- **`export`:** Outputs an array of tasks (optionally filtered by `status`) straight to `stdout` in valid JSON format. This allows an AI agent to ingest the current state of tasks needing prioritization.
+- **`import`:** Accepts a JSON array (from a file or `stdin`) containing the modified tasks. The AI agent recalculates urgency scores or tags and hands them back. The script validates the payloads against the schema, appends them to `issues.jsonl`, and instantly invokes the conflict resolution sync to merge updates.
 
 ---
 

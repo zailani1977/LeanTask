@@ -5,8 +5,6 @@ test:
 init:
 	mkdir -p .tasks
 	touch .tasks/issues.jsonl
-	touch .tasks/capture.jsonl
-	echo ".tasks/capture.jsonl merge=union" > .gitattributes
 	echo ".tasks/issues.jsonl merge=union" >> .gitattributes
 
 run:

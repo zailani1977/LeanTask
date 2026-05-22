@@ -5,8 +5,8 @@ import argparse
 from task_cli_capture import capture
 from task_cli_workbench import search, comment, state
 from task_cli_report import report
-from task_loop import process_loop
 from task_sync import sync_issues
+from task_cli_bulk import export_tasks, import_tasks
 
 def main():
     parser = argparse.ArgumentParser(description="Distributed Task Management CLI")
@@ -33,12 +33,16 @@ def main():
     # report
     subparsers.add_parser("report", help="Print daily report")
 
-    # loop
-    loop_parser = subparsers.add_parser("loop", help="Run background triage loop")
-    loop_parser.add_argument("--once", action="store_true", help="Run one pass and exit")
-
     # sync
     subparsers.add_parser("sync", help="Sync/resolve duplicate tasks in issues.jsonl")
+
+    # export
+    export_parser = subparsers.add_parser("export", help="Export tasks as JSON array")
+    export_parser.add_argument("--status", type=str, help="Filter by status (e.g. open)")
+
+    # import
+    import_parser = subparsers.add_parser("import", help="Import tasks from JSON array file or stdin")
+    import_parser.add_argument("file", type=str, nargs='?', default="-", help="Path to JSON file or - for stdin")
 
     args = parser.parse_args()
 
@@ -52,10 +56,12 @@ def main():
         state(args.task_id, args.state)
     elif args.command == "report":
         report()
-    elif args.command == "loop":
-        process_loop(run_once=args.once)
     elif args.command == "sync":
         sync_issues()
+    elif args.command == "export":
+        export_tasks(args.status)
+    elif args.command == "import":
+        import_tasks(args.file)
 
 if __name__ == "__main__":
     main()

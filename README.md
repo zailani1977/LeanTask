@@ -5,9 +5,8 @@ A lightweight, local, Git-tracked task management system. It uses an append-only
 ## Architecture
 
 - **Primary Source of Truth**: `.tasks/issues.jsonl` (Append-only JSONL log tracked in Git).
-- **Raw Input Buffer**: `.tasks/capture.jsonl` (Zero-latency buffer for capturing raw input, offline capable).
 - **Read Cache**: `.tasks/db.sqlite` (Auto-hydrated SQLite database for querying tasks).
-- **Git Integration**: `.gitattributes` uses Git's native union merge driver on the JSONL files to merge concurrent actions deterministically.
+- **Git Integration**: `.gitattributes` uses Git's native union merge driver on the JSONL file to merge concurrent actions deterministically.
 
 ## Installation & Setup
 
@@ -20,15 +19,14 @@ A lightweight, local, Git-tracked task management system. It uses an append-only
    ```bash
    make init
    ```
-   This creates the `.tasks/` folder, the `.jsonl` files, and the `.gitattributes` configuration.
 
 ## Usage
 
-You can run the CLI via `./task_cli.py <command>` or `make run ARGS="<command>"`.
+You can run the CLI via `./task_cli.py <command>`.
 
 ### 1. Capture Client (Tier 1)
 
-Capture raw task input instantaneously.
+Capture raw task input instantaneously. This will append a placeholder JSON structure directly to the tracking log.
 
 ```bash
 ./task_cli.py capture "Fix SPI memory leak #network #bug"
@@ -62,12 +60,20 @@ View a formatted Markdown progress report summarizing active priorities and bloc
 ./task_cli.py report
 ```
 
-### Background Worker & Synchronization
+### AI Agent Integration (Bulk Triage)
 
-- **AI Triage Loop**: Parses raw `.tasks/capture.jsonl` strings into structured JSON, calculates urgency, writes to `issues.jsonl`, and hydrates the SQLite cache. Run it as a daemon, or pass `--once` for a single sweep.
+External AI Agents (like Copilot CLI or Gemini CLI) can interface with the system for triage through the bulk import/export commands:
+
+- **Export Tasks**: Download a JSON array of tasks (e.g. ones that are `open` or un-triaged):
   ```bash
-  ./task_cli.py loop --once
+  ./task_cli.py export --status open > to_triage.json
   ```
+- **Import Tasks**: Once the AI agent has modified the JSON array (setting tags, calculating Urgency Scores), the updated JSON is imported back in:
+  ```bash
+  ./task_cli.py import to_triage.json
+  ```
+
+### Synchronization
 
 - **Sync (Conflict Resolution)**: When merging branches, git `union` merge might create multiple JSON lines for the same `task_id`. Run `sync` to deterministically merge them (resolving history, comments, and priority statuses chronologically).
   ```bash
@@ -76,7 +82,7 @@ View a formatted Markdown progress report summarizing active priorities and bloc
 
 ## Testing
 
-Run the test suite to verify latency, rehydration, reporting logic, and simulated Git union conflict resolution:
+Run the test suite to verify the application:
 
 ```bash
 make test

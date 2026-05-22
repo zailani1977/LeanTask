@@ -6,10 +6,10 @@ import shutil
 from unittest.mock import patch
 
 import task_cli_capture
-import task_loop
 import task_db
 import task_sync
 from task_cli_workbench import _update_task_in_jsonl
+import task_cli_bulk
 
 class TestTaskCLI(unittest.TestCase):
 
@@ -19,22 +19,25 @@ class TestTaskCLI(unittest.TestCase):
             shutil.rmtree(".tasks")
         os.makedirs(".tasks")
 
-        # Monkeypatch constants if needed, but since they read from .tasks/ we are good
         open(task_db.ISSUES_FILE, 'w').close()
-        open(task_cli_capture.CAPTURE_FILE, 'w').close()
 
-    def test_latency(self):
-        """Latency Test: Assert that the capture script appends to the buffer file in under 15ms."""
+    def test_latency_and_capture(self):
+        """Latency Test: Assert that the capture script appends a valid json to issues.jsonl in under 15ms."""
         start = time.time()
         task_cli_capture.capture("Fix SPI memory leak #network #bug")
         end = time.time()
         duration = (end - start) * 1000 # ms
         self.assertLess(duration, 15.0, f"Capture took {duration}ms, which is >= 15ms")
 
-        with open(task_cli_capture.CAPTURE_FILE, 'r') as f:
+        with open(task_db.ISSUES_FILE, 'r') as f:
             lines = f.readlines()
         self.assertEqual(len(lines), 1)
-        self.assertIn("Fix SPI memory leak", lines[0])
+
+        # Verify it's a valid JSON with placeholder struct
+        task = json.loads(lines[0])
+        self.assertEqual(task["status"], "open")
+        self.assertEqual(task["priority_score"], 0.0)
+        self.assertIn("Fix SPI memory leak", task["raw_input"])
 
     def test_rehydration(self):
         """Rehydration Test: Write structured tasks to issues.jsonl, trigger rehydration, and query them from SQLite."""
@@ -164,6 +167,62 @@ class TestTaskCLI(unittest.TestCase):
         self.assertEqual(len(synced["comments"]), 2, "Comments should be unioned")
         self.assertEqual(synced["comments"][0]["comment_id"], "c1", "Should be sorted chronologically")
         self.assertEqual(synced["comments"][1]["comment_id"], "c2")
+
+    def test_bulk_export_import(self):
+        """Test the bulk API by exporting, modifying the json, and importing it back."""
+        # Setup initial task
+        task = {
+            "task_id": "dd-4444", "status": "open", "priority_score": 0.0,
+            "project": "untriaged", "title": "Bulk Test", "description": "Need tags",
+            "tags": [], "blocked_by": [], "created_at": "2023-01-01T00:00:00Z",
+            "updated_at": "2023-01-01T00:00:00Z", "raw_input": "Bulk Test", "history": [], "comments": []
+        }
+        with open(task_db.ISSUES_FILE, 'w') as f:
+            f.write(json.dumps(task) + "\n")
+
+        # Rehydrate DB
+        task_db.hydrate_if_needed()
+
+        import io
+        import sys
+
+        # Test Export
+        captured_out = io.StringIO()
+        sys.stdout = captured_out
+        task_cli_bulk.export_tasks()
+        sys.stdout = sys.__stdout__
+
+        exported_json_str = captured_out.getvalue()
+        exported_tasks = json.loads(exported_json_str)
+
+        self.assertEqual(len(exported_tasks), 1)
+        self.assertEqual(exported_tasks[0]["task_id"], "dd-4444")
+
+        # AI modifies task
+        exported_tasks[0]["priority_score"] = 4.5
+        exported_tasks[0]["tags"] = ["#ai", "#triaged"]
+        exported_tasks[0]["updated_at"] = "2023-01-02T00:00:00Z" # Newer
+
+        # Test Import
+        with open(".tasks/ai_triage.json", "w") as f:
+            json.dump(exported_tasks, f)
+
+        task_cli_bulk.import_tasks(".tasks/ai_triage.json")
+
+        # Re-hydrate to ensure DB caught the new json line
+        if os.path.exists(task_db.DB_FILE):
+             os.remove(task_db.DB_FILE)
+        task_db.hydrate_if_needed()
+
+        # Check if issues.jsonl merged it properly
+        with open(task_db.ISSUES_FILE, 'r') as f:
+            lines = f.readlines()
+        self.assertEqual(len(lines), 1, "Sync should have resolved duplicates")
+        synced = json.loads(lines[0])
+
+        self.assertEqual(synced["priority_score"], 4.5)
+        self.assertCountEqual(synced["tags"], ["#ai", "#triaged"])
+        self.assertEqual(synced["updated_at"], "2023-01-02T00:00:00Z")
 
 if __name__ == '__main__':
     unittest.main()
