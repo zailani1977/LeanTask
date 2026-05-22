@@ -7,6 +7,7 @@ from task_cli_workbench import search, comment, state, due, list_tasks
 from task_cli_report import report
 from task_sync import sync_issues
 from task_cli_bulk import export_tasks, import_tasks
+from task_cli_clean import clean
 
 def main():
     parser = argparse.ArgumentParser(description="Distributed Task Management CLI")
@@ -53,6 +54,10 @@ def main():
     import_parser = subparsers.add_parser("import", help="Import tasks from JSON array file or stdin")
     import_parser.add_argument("file", type=str, nargs='?', default="-", help="Path to JSON file or - for stdin")
 
+    # clean
+    clean_parser = subparsers.add_parser("clean", help="Clean the database/workspace")
+    clean_parser.add_argument("--hard", action="store_true", help="Delete the entire .tasks/ directory (hard wipe)")
+
     args = parser.parse_args()
 
     if args.command == "capture":
@@ -75,6 +80,8 @@ def main():
         export_tasks(args.status)
     elif args.command == "import":
         import_tasks(args.file)
+    elif args.command == "clean":
+        clean(args.hard)
 
 if __name__ == "__main__":
     main()

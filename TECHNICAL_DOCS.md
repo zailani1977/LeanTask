@@ -30,8 +30,16 @@ When a user runs `./task_cli.py capture <text>`, it instantly generates a valid 
 
 This tier provides the standard CRUD tools to interact with tasks.
 
-- **Search:** Uses SQL `LIKE` queries against the SQLite read-cache.
-- **State Changes & Commenting:** Modifying an issue requires rewriting the `.tasks/issues.jsonl` file to maintain it as the source of truth. The updater reads the file line-by-line, applies the state change or comment (along with an audit history log), and writes back the updated JSON line. It does *not* write directly to SQLite; instead, the change to `issues.jsonl` triggers the DB to auto-hydrate on the next read.
+- **Search & Listing:** Uses SQL queries (like `LIKE` for search or direct equality for status filtering via `list`) against the SQLite read-cache.
+- **Modifications (State, Due Dates, Comments):** Modifying an issue requires rewriting the `.tasks/issues.jsonl` file to maintain it as the source of truth. The updater reads the file line-by-line, applies the change (e.g., status updates, due date assignments, or new comments) along with an audit history log, and writes back the updated JSON line. It does *not* write directly to SQLite; instead, the change to `issues.jsonl` triggers the DB to auto-hydrate on the next read.
+
+---
+
+## 3.5 Maintenance Utilities (`task_cli_clean.py`)
+
+Provides tools to manage the local environment footprint:
+- **Soft Clean:** Deletes the SQLite read-cache (`.tasks/db.sqlite`), forcing a full auto-hydration sequence on the next read.
+- **Hard Clean:** Deletes the entire `.tasks/` directory, completely wiping the event log and database.
 
 ---
 
