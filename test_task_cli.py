@@ -5,7 +5,7 @@ import json
 import shutil
 from unittest.mock import patch
 
-import task_cli_capture
+import task_cli_submit
 import task_db
 import task_sync
 from task_cli_workbench import _update_task_in_jsonl
@@ -21,13 +21,13 @@ class TestTaskCLI(unittest.TestCase):
 
         open(task_db.ISSUES_FILE, 'w').close()
 
-    def test_latency_and_capture(self):
-        """Latency Test: Assert that the capture script appends a valid json to issues.jsonl in under 15ms."""
+    def test_latency_and_submit(self):
+        """Latency Test: Assert that the submit script appends a valid json to issues.jsonl in under 15ms."""
         start = time.time()
-        task_cli_capture.capture("Fix SPI memory leak #network #bug")
+        task_cli_submit.submit("Fix SPI memory leak #network #bug")
         end = time.time()
         duration = (end - start) * 1000 # ms
-        self.assertLess(duration, 15.0, f"Capture took {duration}ms, which is >= 15ms")
+        self.assertLess(duration, 15.0, f"Submit took {duration}ms, which is >= 15ms")
 
         with open(task_db.ISSUES_FILE, 'r') as f:
             lines = f.readlines()
@@ -100,12 +100,12 @@ class TestTaskCLI(unittest.TestCase):
         import sys
         import task_cli_report
 
-        captured_out = io.StringIO()
-        sys.stdout = captured_out
+        submitd_out = io.StringIO()
+        sys.stdout = submitd_out
         task_cli_report.report()
         sys.stdout = sys.__stdout__
 
-        out = captured_out.getvalue()
+        out = submitd_out.getvalue()
 
         # Task A should be in Daily Matrix or Triage Queue (it's open and unblocked -> Triage Queue in our code)
         # Task B should be in Blocker Alerts
@@ -121,12 +121,12 @@ class TestTaskCLI(unittest.TestCase):
              os.remove(task_db.DB_FILE) # force rebuild since python's file mtime precision can cause issues in fast tests
         task_db.hydrate_if_needed()
 
-        captured_out2 = io.StringIO()
-        sys.stdout = captured_out2
+        submitd_out2 = io.StringIO()
+        sys.stdout = submitd_out2
         task_cli_report.report()
         sys.stdout = sys.__stdout__
 
-        out2 = captured_out2.getvalue()
+        out2 = submitd_out2.getvalue()
         # Task B is no longer blocked by an open task. Task A shouldn't show because it's closed
         self.assertNotIn("aa-1111] Task A", out2) # Closed tasks are not fetched in report
         self.assertIn("bb-2222] Task B", out2) # Should now be unblocked!
@@ -188,12 +188,12 @@ class TestTaskCLI(unittest.TestCase):
         import sys
 
         # Test Export
-        captured_out = io.StringIO()
-        sys.stdout = captured_out
+        submitd_out = io.StringIO()
+        sys.stdout = submitd_out
         task_cli_bulk.export_tasks()
         sys.stdout = sys.__stdout__
 
-        exported_json_str = captured_out.getvalue()
+        exported_json_str = submitd_out.getvalue()
         exported_tasks = json.loads(exported_json_str)
 
         self.assertEqual(len(exported_tasks), 1)

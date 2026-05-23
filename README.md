@@ -24,12 +24,12 @@ A lightweight, local, Git-tracked task management system. It uses an append-only
 
 You can run the CLI via `./task_cli.py <command>`.
 
-### 1. Capture Client (Tier 1)
+### 1. Submit Client (Tier 1)
 
-Capture raw task input instantaneously. This will append a placeholder JSON structure directly to the tracking log.
+Submit raw task input instantaneously. This will append a placeholder JSON structure directly to the tracking log.
 
 ```bash
-./task_cli.py capture "Fix SPI memory leak #network #bug"
+./task_cli.py submit "Fix SPI memory leak #network #bug"
 ```
 
 ### 2. Interactive Workbench (Tier 2)

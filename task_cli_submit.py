@@ -5,7 +5,7 @@ import random
 
 from task_db import ISSUES_FILE
 
-def capture(raw_string):
+def submit(raw_string):
     # Fast offline append directly to issues.jsonl with a placeholder structure
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
