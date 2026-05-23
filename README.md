@@ -52,6 +52,19 @@ Manage tasks via standard commands.
   ./task_cli.py state <task_id> in_progress
   ```
 
+- **Set Due Date**:
+  Update a task's due date.
+  ```bash
+  ./task_cli.py due <task_id> "2024-12-31T23:59:59Z"
+  ```
+
+- **List Tasks**:
+  List tasks filtered by a specific status, or view all tasks.
+  ```bash
+  ./task_cli.py list open
+  ./task_cli.py list all
+  ```
+
 ### 3. Agent Reporter (Tier 3)
 
 View a formatted Markdown progress report summarizing active priorities and blockers.
@@ -78,6 +91,18 @@ External AI Agents (like Copilot CLI or Gemini CLI) can interface with the syste
 - **Sync (Conflict Resolution)**: When merging branches, git `union` merge might create multiple JSON lines for the same `task_id`. Run `sync` to deterministically merge them (resolving history, comments, and priority statuses chronologically).
   ```bash
   ./task_cli.py sync
+  ```
+
+### Maintenance / Clean
+
+- **Clean Cache**: Delete the local SQLite read-cache database (`.tasks/db.sqlite`). It will be automatically rebuilt the next time a command is executed.
+  ```bash
+  ./task_cli.py clean
+  ```
+
+- **Hard Clean**: Delete the entire `.tasks/` directory, wiping all logs and the database. Use with caution!
+  ```bash
+  ./task_cli.py clean --hard
   ```
 
 ## Testing
