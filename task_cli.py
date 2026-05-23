@@ -3,7 +3,7 @@ import sys
 import argparse
 
 from task_cli_capture import capture
-from task_cli_workbench import search, comment, state, due, list_tasks, view, priority, project, title, description
+from task_cli_workbench import search, comment, state, due, list_tasks, view, priority, project, title, description, tags, blocked_by
 from task_cli_report import report
 from task_sync import sync_issues
 from task_cli_bulk import export_tasks, import_tasks
@@ -50,6 +50,16 @@ def main():
     desc_parser = subparsers.add_parser("description", help="Update the description of a task")
     desc_parser.add_argument("task_id", type=str)
     desc_parser.add_argument("text", type=str, help="New description text")
+
+    # tags
+    tags_parser = subparsers.add_parser("tags", help="Update the tags of a task")
+    tags_parser.add_argument("task_id", type=str)
+    tags_parser.add_argument("tags", nargs="*", type=str, help="New tags list")
+
+    # blocked_by
+    blocked_by_parser = subparsers.add_parser("blocked_by", help="Update the blocked_by of a task")
+    blocked_by_parser.add_argument("task_id", type=str)
+    blocked_by_parser.add_argument("blocked_by", nargs="*", type=str, help="New blocked_by task IDs")
 
     # due
     due_parser = subparsers.add_parser("due", help="Update the due date of a task")
@@ -103,6 +113,10 @@ def main():
         title(args.task_id, args.text)
     elif args.command == "description":
         description(args.task_id, args.text)
+    elif args.command == "tags":
+        tags(args.task_id, args.tags)
+    elif args.command == "blocked_by":
+        blocked_by(args.task_id, args.blocked_by)
     elif args.command == "due":
         due(args.task_id, args.date)
     elif args.command == "list":
