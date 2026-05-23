@@ -42,3 +42,5 @@ def capture(raw_string):
 
     with open(ISSUES_FILE, "a") as f:
         f.write(json.dumps(entry) + "\n")
+
+    print(task_id)

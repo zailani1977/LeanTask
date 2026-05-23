@@ -269,3 +269,43 @@ def description(task_id, new_description):
 
     if _update_task_in_jsonl(task_id, change_description):
         print(f"Description of {task_id} changed.")
+
+def tags(task_id, tags_list):
+    def change_tags(task):
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        old_tags = task.get("tags", [])
+        task["tags"] = tags_list
+
+        # audit log
+        h = {
+            "timestamp": now,
+            "author": "user",
+            "field": "tags",
+            "old_value": old_tags,
+            "new_value": tags_list
+        }
+        task.setdefault("history", []).append(h)
+        task["updated_at"] = now
+
+    if _update_task_in_jsonl(task_id, change_tags):
+        print(f"Tags of {task_id} changed.")
+
+def blocked_by(task_id, blocked_by_list):
+    def change_blocked_by(task):
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        old_blocked_by = task.get("blocked_by", [])
+        task["blocked_by"] = blocked_by_list
+
+        # audit log
+        h = {
+            "timestamp": now,
+            "author": "user",
+            "field": "blocked_by",
+            "old_value": old_blocked_by,
+            "new_value": blocked_by_list
+        }
+        task.setdefault("history", []).append(h)
+        task["updated_at"] = now
+
+    if _update_task_in_jsonl(task_id, change_blocked_by):
+        print(f"Blocked by of {task_id} changed.")
