@@ -83,13 +83,46 @@ class TaskManagerApp:
             messagebox.showerror("Error", f"Could not load tasks: {str(e)}")
 
     def submit_task(self):
-        task_text = simpledialog.askstring("Submit Task", "Enter task name:")
-        if task_text:
+        submit_window = ctk.CTkToplevel(self.root)
+        submit_window.title("Submit Task")
+        submit_window.geometry("400x300")
+        submit_window.grab_set() # Make it modal
+
+        ctk.CTkLabel(submit_window, text="Title:").grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_title = ctk.CTkEntry(submit_window, width=250)
+        entry_title.grid(row=0, column=1, padx=10, pady=5)
+
+        ctk.CTkLabel(submit_window, text="Description (Optional):").grid(row=1, column=0, sticky=tk.NW, padx=10, pady=5)
+        text_desc = ctk.CTkTextbox(submit_window, width=250, height=80)
+        text_desc.grid(row=1, column=1, padx=10, pady=5)
+
+        ctk.CTkLabel(submit_window, text="Due Date (Optional):").grid(row=2, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_due = ctk.CTkEntry(submit_window, width=250)
+        entry_due.grid(row=2, column=1, padx=10, pady=5)
+
+        def on_submit():
+            title_text = entry_title.get().strip()
+            if not title_text:
+                messagebox.showerror("Error", "Title is required.")
+                return
+
             try:
-                submit(task_text)
+                task_id = submit(title_text)
+                desc_text = text_desc.get("1.0", "end").strip()
+                due_text = entry_due.get().strip()
+
+                if desc_text:
+                    description(task_id, desc_text)
+                if due_text:
+                    due(task_id, due_text)
+
                 self.refresh_tasks()
+                submit_window.destroy()
             except Exception as e:
                 messagebox.showerror("Error", f"Could not submit task: {str(e)}")
+
+        btn_submit = ctk.CTkButton(submit_window, text="Submit", command=on_submit)
+        btn_submit.grid(row=3, column=1, pady=20)
 
     def on_task_double_click(self, event):
         selection = self.tree.selection()
