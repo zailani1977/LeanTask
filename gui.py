@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, simpledialog
 from task_db import get_connection
 from task_cli_submit import submit
 from task_cli_workbench import state, priority, project, title, description, tags, due
+from task_sync import sync_issues
 
 class TaskManagerApp:
     def __init__(self, root):
@@ -59,6 +60,7 @@ class TaskManagerApp:
             self.tree.delete(item)
 
         try:
+            sync_issues()
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT task_id, status, priority_score, project, due_date, title FROM tasks")
@@ -82,12 +84,16 @@ class TaskManagerApp:
                 messagebox.showerror("Error", f"Could not submit task: {str(e)}")
 
     def on_task_double_click(self, event):
-        item = self.tree.selection()[0]
+        selection = self.tree.selection()
+        if not selection:
+            return
+        item = selection[0]
         task_id = self.tree.item(item, "values")[0]
         self.open_task_details(task_id)
 
     def open_task_details(self, task_id):
         try:
+            sync_issues()
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute("""

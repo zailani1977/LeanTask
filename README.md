@@ -27,6 +27,8 @@ You can run the CLI via `./task_cli.py <command>`.
 ### GUI Dashboard
 A graphical dashboard is available to view and interact with tasks without the CLI.
 
+> **Note:** `tkinter` is part of the standard Python library but may be omitted by default on some Linux distributions. If you get a `ModuleNotFoundError: No module named 'tkinter'` error, install it via your package manager (e.g., `sudo apt-get install python3-tk` on Ubuntu/Debian).
+
 ```bash
 python gui.py
 ```
