@@ -129,7 +129,7 @@ class TaskManagerApp:
 
         ctk.CTkLabel(details_window, text="Status:").grid(row=2, column=0, sticky=tk.W, padx=10, pady=5)
         status_var = tk.StringVar(value=row[1])
-        status_dropdown = ctk.CTkComboBox(details_window, textvariable=status_var, values=["open", "in_progress", "blocked", "deferred", "closed"])
+        status_dropdown = ctk.CTkComboBox(details_window, variable=status_var, values=["open", "in_progress", "blocked", "deferred", "closed"])
         status_dropdown.grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
 
         ctk.CTkLabel(details_window, text="Priority (0.0-5.0):").grid(row=3, column=0, sticky=tk.W, padx=10, pady=5)
