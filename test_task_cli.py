@@ -15,11 +15,13 @@ class TestTaskCLI(unittest.TestCase):
 
     def setUp(self):
         # Fresh test workspace
+        import gc
+        gc.collect()
         if os.path.exists(".tasks"):
             shutil.rmtree(".tasks")
         os.makedirs(".tasks")
 
-        open(task_db.ISSUES_FILE, 'w').close()
+        open(task_db.ISSUES_FILE, 'w', encoding='utf-8').close()
 
     def test_latency_and_submit(self):
         """Latency Test: Assert that the submit script appends a valid json to issues.jsonl in under 15ms."""
@@ -29,7 +31,7 @@ class TestTaskCLI(unittest.TestCase):
         duration = (end - start) * 1000 # ms
         self.assertLess(duration, 15.0, f"Submit took {duration}ms, which is >= 15ms")
 
-        with open(task_db.ISSUES_FILE, 'r') as f:
+        with open(task_db.ISSUES_FILE, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         self.assertEqual(len(lines), 1)
 
@@ -61,7 +63,7 @@ class TestTaskCLI(unittest.TestCase):
                 "comments": []
             })
 
-        with open(task_db.ISSUES_FILE, 'w') as f:
+        with open(task_db.ISSUES_FILE, 'w', encoding='utf-8') as f:
             for t in tasks:
                 f.write(json.dumps(t) + "\n")
 
@@ -88,7 +90,7 @@ class TestTaskCLI(unittest.TestCase):
             "tags": [], "blocked_by": ["aa-1111"], "due_date": None, "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T00:00:00Z", "raw_input": "B", "history": [], "comments": []
         }
-        with open(task_db.ISSUES_FILE, 'w') as f:
+        with open(task_db.ISSUES_FILE, 'w', encoding='utf-8') as f:
             f.write(json.dumps(task_a) + "\n")
             f.write(json.dumps(task_b) + "\n")
 
@@ -117,6 +119,8 @@ class TestTaskCLI(unittest.TestCase):
         task_cli_workbench.state("aa-1111", "closed")
 
         # Re-hydrate to reflect new json state in db
+        import gc
+        gc.collect()
         if os.path.exists(task_db.DB_FILE):
              os.remove(task_db.DB_FILE) # force rebuild since python's file mtime precision can cause issues in fast tests
         task_db.hydrate_if_needed()
@@ -150,14 +154,14 @@ class TestTaskCLI(unittest.TestCase):
         task_b["updated_at"] = "2023-01-03T00:00:00Z" # Newer
         task_b["comments"] = [{"comment_id": "c2", "timestamp": "2023-01-03T00:00:00Z", "author": "u2", "text": "Comment 2"}]
 
-        with open(task_db.ISSUES_FILE, 'w') as f:
+        with open(task_db.ISSUES_FILE, 'w', encoding='utf-8') as f:
             f.write(json.dumps(task_a) + "\n")
             f.write(json.dumps(task_b) + "\n")
 
         task_sync.sync_issues()
 
         # Read back
-        with open(task_db.ISSUES_FILE, 'r') as f:
+        with open(task_db.ISSUES_FILE, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
         self.assertEqual(len(lines), 1, "Should have synced into a single row")
@@ -178,7 +182,7 @@ class TestTaskCLI(unittest.TestCase):
             "tags": [], "blocked_by": [], "due_date": None, "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T00:00:00Z", "raw_input": "Bulk Test", "history": [], "comments": []
         }
-        with open(task_db.ISSUES_FILE, 'w') as f:
+        with open(task_db.ISSUES_FILE, 'w', encoding='utf-8') as f:
             f.write(json.dumps(task) + "\n")
 
         # Rehydrate DB
@@ -205,18 +209,20 @@ class TestTaskCLI(unittest.TestCase):
         exported_tasks[0]["updated_at"] = "2023-01-02T00:00:00Z" # Newer
 
         # Test Import
-        with open(".tasks/ai_triage.json", "w") as f:
+        with open(".tasks/ai_triage.json", "w", encoding='utf-8') as f:
             json.dump(exported_tasks, f)
 
         task_cli_bulk.import_tasks(".tasks/ai_triage.json")
 
         # Re-hydrate to ensure DB caught the new json line
+        import gc
+        gc.collect()
         if os.path.exists(task_db.DB_FILE):
              os.remove(task_db.DB_FILE)
         task_db.hydrate_if_needed()
 
         # Check if issues.jsonl merged it properly
-        with open(task_db.ISSUES_FILE, 'r') as f:
+        with open(task_db.ISSUES_FILE, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         self.assertEqual(len(lines), 1, "Sync should have resolved duplicates")
         synced = json.loads(lines[0])

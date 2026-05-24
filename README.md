@@ -64,7 +64,13 @@ If initializing a new repository or starting fresh, run:
 ```bash
 make init
 ```
+Or if you are on Windows (or do not have `make` installed), initialize the workspace directly using Python:
+```bash
+python task_cli.py init
+```
 This sets up the `.tasks/` directory and configures Git to use the `union` merge driver for `.tasks/issues.jsonl` via `.gitattributes`.
+
+> **Note on Windows Execution**: On Windows, replace `./task_cli.py` in all commands with `python task_cli.py` (for example, `python task_cli.py submit "..."`).
 
 ---
 

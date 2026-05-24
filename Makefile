@@ -1,11 +1,9 @@
 .PHONY: test init run
 test:
-	python3 -m unittest test_task_cli.py
+	python -m unittest test_task_cli.py
 
 init:
-	mkdir -p .tasks
-	touch .tasks/issues.jsonl
-	echo ".tasks/issues.jsonl merge=union" >> .gitattributes
+	python task_cli.py init
 
 run:
-	./task_cli.py $(ARGS)
+	python task_cli.py $(ARGS)

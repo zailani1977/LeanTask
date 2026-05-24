@@ -10,13 +10,19 @@ def clean(hard=False):
     """
     if hard:
         if os.path.exists(".tasks"):
-            shutil.rmtree(".tasks")
-            print("Successfully deleted the .tasks/ directory (hard clean).")
+            try:
+                shutil.rmtree(".tasks")
+                print("Successfully deleted the .tasks/ directory (hard clean).")
+            except PermissionError as e:
+                print(f"Error: Could not delete the .tasks/ directory due to a file lock. Ensure no other instances of the CLI or GUI are running. Details: {e}")
         else:
             print(".tasks/ directory does not exist.")
     else:
         if os.path.exists(DB_FILE):
-            os.remove(DB_FILE)
-            print("Successfully deleted the SQLite cache (db.sqlite).")
+            try:
+                os.remove(DB_FILE)
+                print("Successfully deleted the SQLite cache (db.sqlite).")
+            except PermissionError as e:
+                print(f"Error: Could not delete the SQLite cache file due to a file lock. Ensure no other instances of the CLI or GUI are running. Details: {e}")
         else:
             print("SQLite cache (db.sqlite) does not exist.")

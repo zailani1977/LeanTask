@@ -25,7 +25,7 @@ def _update_task_in_jsonl(task_id, updater_func):
     """Reads issues.jsonl, finds the task, applies updater_func, and rewrites the file."""
     tasks = []
     found = False
-    with open(ISSUES_FILE, 'r') as f:
+    with open(ISSUES_FILE, 'r', encoding='utf-8') as f:
         for line in f:
             if not line.strip(): continue
             task = json.loads(line)
@@ -38,7 +38,7 @@ def _update_task_in_jsonl(task_id, updater_func):
         print(f"Task {task_id} not found.")
         return False
 
-    with open(ISSUES_FILE, 'w') as f:
+    with open(ISSUES_FILE, 'w', encoding='utf-8') as f:
         for t in tasks:
             f.write(json.dumps(t) + "\n")
     return True

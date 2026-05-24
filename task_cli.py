@@ -95,6 +95,9 @@ def main():
     clean_parser = subparsers.add_parser("clean", help="Clean the database/workspace")
     clean_parser.add_argument("--hard", action="store_true", help="Delete the entire .tasks/ directory (hard wipe)")
 
+    # init
+    subparsers.add_parser("init", help="Initialize the workspace (creates directory, files, and updates git attributes)")
+
     args = parser.parse_args()
 
     if args.command == "submit":
@@ -133,6 +136,9 @@ def main():
         import_tasks(args.file)
     elif args.command == "clean":
         clean(args.hard)
+    elif args.command == "init":
+        from task_db import init_workspace
+        init_workspace()
     elif args.command == "help":
         parser.print_help()
 
