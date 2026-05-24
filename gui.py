@@ -76,7 +76,7 @@ class TaskManagerApp:
             messagebox.showerror("Error", f"Could not load tasks: {str(e)}")
 
     def submit_task(self):
-        task_text = simpledialog.askstring("Submit Task", "Enter task details:")
+        task_text = simpledialog.askstring("Submit Task", "Enter task name:")
         if task_text:
             try:
                 submit(task_text)
