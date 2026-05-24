@@ -25,9 +25,9 @@ A lightweight, local, Git-tracked task management system. It uses an append-only
 You can run the CLI via `./task_cli.py <command>`.
 
 ### GUI Dashboard
-A graphical dashboard is available to view and interact with tasks without the CLI.
+A graphical dashboard (beautified with **CustomTkinter**) is available to view and interact with tasks without the CLI.
 
-> **Note:** `tkinter` is part of the standard Python library but may be omitted by default on some Linux distributions. If you get a `ModuleNotFoundError: No module named 'tkinter'` error, install it via your package manager (e.g., `sudo apt-get install python3-tk` on Ubuntu/Debian).
+> **Note:** The GUI requires `customtkinter`, which is listed in `requirements.txt`. Make sure to install it via `pip install -r requirements.txt`. Additionally, the base `tkinter` package may be omitted by default on some Linux distributions. If you get a `ModuleNotFoundError: No module named 'tkinter'` error, install it via your package manager (e.g., `sudo apt-get install python3-tk` on Ubuntu/Debian).
 
 ```bash
 python gui.py
