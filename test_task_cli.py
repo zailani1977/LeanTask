@@ -5,7 +5,7 @@ import json
 import shutil
 from unittest.mock import patch
 
-import task_cli_capture
+import task_cli_submit
 import task_db
 import task_sync
 from task_cli_workbench import _update_task_in_jsonl
@@ -21,13 +21,13 @@ class TestTaskCLI(unittest.TestCase):
 
         open(task_db.ISSUES_FILE, 'w').close()
 
-    def test_latency_and_capture(self):
-        """Latency Test: Assert that the capture script appends a valid json to issues.jsonl in under 15ms."""
+    def test_latency_and_submit(self):
+        """Latency Test: Assert that the submit script appends a valid json to issues.jsonl in under 15ms."""
         start = time.time()
-        task_cli_capture.capture("Fix SPI memory leak #network #bug")
+        task_cli_submit.submit("Fix SPI memory leak #network #bug")
         end = time.time()
         duration = (end - start) * 1000 # ms
-        self.assertLess(duration, 15.0, f"Capture took {duration}ms, which is >= 15ms")
+        self.assertLess(duration, 15.0, f"Submit took {duration}ms, which is >= 15ms")
 
         with open(task_db.ISSUES_FILE, 'r') as f:
             lines = f.readlines()

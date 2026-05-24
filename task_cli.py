@@ -2,7 +2,7 @@
 import sys
 import argparse
 
-from task_cli_capture import capture
+from task_cli_submit import submit
 from task_cli_workbench import search, comment, state, due, list_tasks, view, priority, project, title, description, tags, blocked_by
 from task_cli_report import report
 from task_sync import sync_issues
@@ -13,9 +13,9 @@ def main():
     parser = argparse.ArgumentParser(description="Distributed Task Management CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # capture
-    capture_parser = subparsers.add_parser("capture", help="Capture raw text task")
-    capture_parser.add_argument("text", type=str, help="Raw input string")
+    # submit
+    submit_parser = subparsers.add_parser("submit", help="Submit raw text task")
+    submit_parser.add_argument("text", type=str, help="Raw input string")
 
     # search
     search_parser = subparsers.add_parser("search", help="Search tasks")
@@ -97,8 +97,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "capture":
-        capture(args.text)
+    if args.command == "submit":
+        submit(args.text)
     elif args.command == "search":
         search(args.keyword)
     elif args.command == "comment":

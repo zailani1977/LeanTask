@@ -24,12 +24,24 @@ A lightweight, local, Git-tracked task management system. It uses an append-only
 
 You can run the CLI via `./task_cli.py <command>`.
 
-### 1. Capture Client (Tier 1)
+### GUI Dashboard
+A graphical dashboard (beautified with **CustomTkinter**) is available to view and interact with tasks without the CLI.
 
-Capture raw task input instantaneously. This will append a placeholder JSON structure directly to the tracking log.
+> **Note:** The GUI requires `customtkinter`, which is listed in `requirements.txt`. Make sure to install it via `pip install -r requirements.txt`. Additionally, the base `tkinter` package may be omitted by default on some Linux distributions. If you get a `ModuleNotFoundError: No module named 'tkinter'` error, install it via your package manager (e.g., `sudo apt-get install python3-tk` on Ubuntu/Debian).
 
 ```bash
-./task_cli.py capture "Fix SPI memory leak #network #bug"
+python gui.py
+```
+- **Dashboard**: Displays a list of tasks with their IDs, statuses, priorities, projects, due dates, and titles.
+- **Submit Task**: Click the "Submit Task" button to quickly add a raw text task.
+- **Task Details & Updates**: Double-click any task in the list to open its details window. From there, you can view its full description and easily update fields such as status, priority, or tags. Click "Update Task" to apply changes.
+
+### 1. Submit Client (Tier 1)
+
+Submit raw task input instantaneously. This will append a placeholder JSON structure directly to the tracking log.
+
+```bash
+./task_cli.py submit "Fix SPI memory leak #network #bug"
 ```
 
 ### 2. Interactive Workbench (Tier 2)
