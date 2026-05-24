@@ -48,7 +48,22 @@ It uses an **append-only JSONL (JSON Lines) event sourcing model** as the primar
 
 ## Installation & Setup
 
-### 1. Install Dependencies
+### 1. Setup Virtual Environment (Recommended)
+Before installing dependencies, it is recommended to run LeanTask inside a Python virtual environment:
+
+* **On Linux/macOS**:
+  ```bash
+  python3 -m venv .venv
+  source .venv/bin/activate
+  ```
+* **On Windows**:
+  Open Command Prompt or PowerShell and run:
+  ```cmd
+  python -m venv venv
+  .\venv\Scripts\activate
+  ```
+
+### 2. Install Dependencies
 Make sure you have Python 3.8+ installed. Install the Python requirements:
 ```bash
 pip install -r requirements.txt
@@ -59,18 +74,36 @@ pip install -r requirements.txt
 > - **Fedora/CentOS/RHEL**: `sudo dnf install python3-tkinter`
 > - **Arch Linux**: `sudo pacman -S tk`
 
-### 2. Initialize the Workspace
-If initializing a new repository or starting fresh, run:
-```bash
-make init
-```
-Or if you are on Windows (or do not have `make` installed), initialize the workspace directly using Python:
-```bash
-python task_cli.py init
-```
+### 3. Initialize the Workspace
+If initializing a new repository or starting fresh, initialize the task workspace:
+
+* **Using Python (Cross-platform)**:
+  You can initialize the workspace directly without using `make`:
+  ```bash
+  python task_cli.py init
+  ```
+* **Using Make / Nmake**:
+  If you are on Windows and wish to use the `Makefile`, execute the commands inside a **Developer Command Prompt** or **Developer PowerShell** (which provides path bindings to your build tools). Both `make` and `nmake` are supported:
+  ```bash
+  make init
+  # or
+  nmake init
+  ```
+
 This sets up the `.tasks/` directory and configures Git to use the `union` merge driver for `.tasks/issues.jsonl` via `.gitattributes`.
 
-> **Note on Windows Execution**: On Windows, replace `./task_cli.py` in all commands with `python task_cli.py` (for example, `python task_cli.py submit "..."`).
+### 4. Running Commands
+
+* **Unix/macOS**:
+  You can run commands directly (e.g. `./task_cli.py list open`).
+* **Windows**:
+  Run commands prefixed with `python` (e.g. `python task_cli.py list open`).
+
+* **Deactivating the Virtual Environment**:
+  Once you are done working, exit the virtual environment by running:
+  ```bash
+  deactivate
+  ```
 
 ---
 
