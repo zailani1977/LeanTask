@@ -24,6 +24,16 @@ A lightweight, local, Git-tracked task management system. It uses an append-only
 
 You can run the CLI via `./task_cli.py <command>`.
 
+### GUI Dashboard
+A graphical dashboard is available to view and interact with tasks without the CLI.
+
+```bash
+python gui.py
+```
+- **Dashboard**: Displays a list of tasks with their IDs, statuses, priorities, projects, due dates, and titles.
+- **Submit Task**: Click the "Submit Task" button to quickly add a raw text task.
+- **Task Details & Updates**: Double-click any task in the list to open its details window. From there, you can view its full description and easily update fields such as status, priority, or tags. Click "Update Task" to apply changes.
+
 ### 1. Submit Client (Tier 1)
 
 Submit raw task input instantaneously. This will append a placeholder JSON structure directly to the tracking log.

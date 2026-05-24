@@ -100,12 +100,12 @@ class TestTaskCLI(unittest.TestCase):
         import sys
         import task_cli_report
 
-        submitd_out = io.StringIO()
-        sys.stdout = submitd_out
+        captured_out = io.StringIO()
+        sys.stdout = captured_out
         task_cli_report.report()
         sys.stdout = sys.__stdout__
 
-        out = submitd_out.getvalue()
+        out = captured_out.getvalue()
 
         # Task A should be in Daily Matrix or Triage Queue (it's open and unblocked -> Triage Queue in our code)
         # Task B should be in Blocker Alerts
@@ -121,12 +121,12 @@ class TestTaskCLI(unittest.TestCase):
              os.remove(task_db.DB_FILE) # force rebuild since python's file mtime precision can cause issues in fast tests
         task_db.hydrate_if_needed()
 
-        submitd_out2 = io.StringIO()
-        sys.stdout = submitd_out2
+        captured_out2 = io.StringIO()
+        sys.stdout = captured_out2
         task_cli_report.report()
         sys.stdout = sys.__stdout__
 
-        out2 = submitd_out2.getvalue()
+        out2 = captured_out2.getvalue()
         # Task B is no longer blocked by an open task. Task A shouldn't show because it's closed
         self.assertNotIn("aa-1111] Task A", out2) # Closed tasks are not fetched in report
         self.assertIn("bb-2222] Task B", out2) # Should now be unblocked!
@@ -188,12 +188,12 @@ class TestTaskCLI(unittest.TestCase):
         import sys
 
         # Test Export
-        submitd_out = io.StringIO()
-        sys.stdout = submitd_out
+        captured_out = io.StringIO()
+        sys.stdout = captured_out
         task_cli_bulk.export_tasks()
         sys.stdout = sys.__stdout__
 
-        exported_json_str = submitd_out.getvalue()
+        exported_json_str = captured_out.getvalue()
         exported_tasks = json.loads(exported_json_str)
 
         self.assertEqual(len(exported_tasks), 1)
