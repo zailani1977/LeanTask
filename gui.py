@@ -86,7 +86,6 @@ class TaskManagerApp:
         submit_window = ctk.CTkToplevel(self.root)
         submit_window.title("Submit Task")
         submit_window.geometry("400x300")
-        submit_window.grab_set() # Make it modal
 
         ctk.CTkLabel(submit_window, text="Title:").grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
         entry_title = ctk.CTkEntry(submit_window, width=250)
@@ -100,6 +99,10 @@ class TaskManagerApp:
         entry_due = ctk.CTkEntry(submit_window, width=250)
         entry_due.grid(row=2, column=1, padx=10, pady=5)
 
+        submit_window.transient(self.root)
+        submit_window.wait_visibility()
+        submit_window.grab_set() # Make it modal
+
         def on_submit():
             title_text = entry_title.get().strip()
             if not title_text:
@@ -108,6 +111,11 @@ class TaskManagerApp:
 
             try:
                 task_id = submit(title_text)
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not submit task: {str(e)}")
+                return
+
+            try:
                 desc_text = text_desc.get("1.0", "end").strip()
                 due_text = entry_due.get().strip()
 
@@ -119,7 +127,9 @@ class TaskManagerApp:
                 self.refresh_tasks()
                 submit_window.destroy()
             except Exception as e:
-                messagebox.showerror("Error", f"Could not submit task: {str(e)}")
+                messagebox.showerror("Error", f"Task created but could not apply optional fields: {str(e)}")
+                self.refresh_tasks()
+                submit_window.destroy()
 
         btn_submit = ctk.CTkButton(submit_window, text="Submit", command=on_submit)
         btn_submit.grid(row=3, column=1, pady=20)
