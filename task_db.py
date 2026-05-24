@@ -67,7 +67,7 @@ def load_db_from_jsonl(conn):
         return
 
     cursor = conn.cursor()
-    with open(ISSUES_FILE, 'r') as f:
+    with open(ISSUES_FILE, 'r', encoding='utf-8') as f:
         for line in f:
             if not line.strip():
                 continue
@@ -139,6 +139,7 @@ def hydrate_if_needed():
         db_mtime = os.path.getmtime(DB_FILE)
 
     if issues_mtime > db_mtime or db_mtime == 0:
+        os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
         conn = sqlite3.connect(DB_FILE)
         # Rebuild
         clear_db(conn)
@@ -149,3 +150,33 @@ def hydrate_if_needed():
 def get_connection():
     hydrate_if_needed()
     return sqlite3.connect(DB_FILE)
+
+def init_workspace():
+    """Initializes the LeanTask workspace (creates directories, files, and updates git attributes)."""
+    # 1. Create .tasks folder
+    os.makedirs(os.path.dirname(ISSUES_FILE), exist_ok=True)
+    
+    # 2. Touch issues.jsonl if it doesn't exist
+    if not os.path.exists(ISSUES_FILE):
+        with open(ISSUES_FILE, 'w', encoding='utf-8') as f:
+            pass
+        print(f"Created {ISSUES_FILE}")
+    else:
+        print(f"{ISSUES_FILE} already exists.")
+        
+    # 3. Setup gitattributes for union merge
+    gitattributes_path = ".gitattributes"
+    attr_line = ".tasks/issues.jsonl merge=union\n"
+    
+    exists = False
+    if os.path.exists(gitattributes_path):
+        with open(gitattributes_path, 'r', encoding='utf-8') as f:
+            if ".tasks/issues.jsonl merge=union" in f.read():
+                exists = True
+                
+    if not exists:
+        with open(gitattributes_path, 'a', encoding='utf-8') as f:
+            f.write(attr_line)
+        print("Configured .gitattributes for union merge of issues.jsonl")
+    else:
+        print(".gitattributes is already configured for union merge.")

@@ -50,7 +50,7 @@ def sync_issues():
 
     tasks_by_id = {}
 
-    with open(ISSUES_FILE, 'r') as f:
+    with open(ISSUES_FILE, 'r', encoding='utf-8') as f:
         for line in f:
             if not line.strip(): continue
             try:
@@ -64,7 +64,7 @@ def sync_issues():
                 print(f"Skipping line during sync due to error: {e}")
 
     # Rewrite issues.jsonl
-    with open(ISSUES_FILE, 'w') as f:
+    with open(ISSUES_FILE, 'w', encoding='utf-8') as f:
         for tid, t in tasks_by_id.items():
             f.write(json.dumps(t) + "\n")
 

@@ -40,7 +40,7 @@ def submit(raw_string):
 
     os.makedirs(".tasks", exist_ok=True)
 
-    with open(ISSUES_FILE, "a") as f:
+    with open(ISSUES_FILE, "a", encoding='utf-8') as f:
         f.write(json.dumps(entry) + "\n")
 
     print(task_id)

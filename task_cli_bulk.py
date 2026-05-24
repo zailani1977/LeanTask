@@ -67,7 +67,7 @@ def import_tasks(file_path=None):
     """Reads a JSON array of tasks from a file (or stdin), appends them to issues.jsonl, and syncs."""
     try:
         if file_path and file_path != "-":
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 tasks = json.load(f)
         else:
             tasks = json.load(sys.stdin)
@@ -85,7 +85,8 @@ def import_tasks(file_path=None):
                 print(f"Skipping invalid task {t.get('task_id', 'unknown')}: {e}", file=sys.stderr)
 
         if valid_tasks:
-            with open(ISSUES_FILE, 'a') as f:
+            os.makedirs(os.path.dirname(ISSUES_FILE), exist_ok=True)
+            with open(ISSUES_FILE, 'a', encoding='utf-8') as f:
                 for t in valid_tasks:
                     f.write(json.dumps(t) + "\n")
 
