@@ -41,8 +41,8 @@ It uses an **append-only JSONL (JSON Lines) event sourcing model** as the primar
 ```
 
 1. **Source of Truth (`.tasks/issues.jsonl`)**: An append-only log of tasks. Each line contains a complete JSON representation of a task.
-2. **Rehydration Layer ([task_db.py](file:///home/zl/Developments/LeanTask/task_db.py))**: Instantly compares file modification timestamps. If `issues.jsonl` is newer than `db.sqlite`, the cache is wiped, validated against the JSON Schema, and rebuilt in SQLite.
-3. **Union Merging & Reconciliation ([task_sync.py](file:///home/zl/Developments/LeanTask/task_sync.py))**: Merges duplicate records for the same task using status precedence overrides (e.g. `closed` > `open`) and chronological sorting of history/comments.
+2. **Rehydration Layer ([task_db.py](task_db.py))**: Instantly compares file modification timestamps. If `issues.jsonl` is newer than `db.sqlite`, the cache is wiped, validated against the JSON Schema, and rebuilt in SQLite.
+3. **Union Merging & Reconciliation ([task_sync.py](task_sync.py))**: Merges duplicate records for the same task using status precedence overrides (e.g. `closed` > `open`) and chronological sorting of history/comments.
 
 ---
 
@@ -126,7 +126,7 @@ Double-click any task in the list to update its properties, add tags, or post co
 
 ## CLI Command Reference Table
 
-All commands are executed via [task_cli.py](file:///home/zl/Developments/LeanTask/task_cli.py).
+All commands are executed via [task_cli.py](task_cli.py).
 
 | Command | Usage | Description |
 | :--- | :--- | :--- |
@@ -175,7 +175,7 @@ All commands are executed via [task_cli.py](file:///home/zl/Developments/LeanTas
   3. **Blocker Alerts**: Active tasks that are blocked by one or more incomplete tasks.
 
 ### AI Agent Integration & Bulk Operations
-LeanTask is fully compatible with AI agents for bulk triage or automated task enrichment. See [BULK_RETRIEVAL_DOCS.md](file:///home/zl/Developments/LeanTask/BULK_RETRIEVAL_DOCS.md) for detailed JSON schemas and pipeline examples.
+LeanTask is fully compatible with AI agents for bulk triage or automated task enrichment. See [BULK_RETRIEVAL_DOCS.md](BULK_RETRIEVAL_DOCS.md) for detailed JSON schemas and pipeline examples.
 
 ---
 

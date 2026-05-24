@@ -77,13 +77,13 @@ The primary database is `.tasks/issues.jsonl`, a plain text JSON Lines file.
 
 ### SQLite Auto-Hydration & Caching (`task_db.py`)
 To prevent parsing the entire JSONL file on every search or query, LeanTask uses a local SQLite cache at `.tasks/db.sqlite`.
-1. **Lazy Validation Checks**: Every call to [get_connection()](file:///home/zl/Developments/LeanTask/task_db.py#L149) triggers a verification step:
+1. **Lazy Validation Checks**: Every call to [get_connection()](task_db.py#L149) triggers a verification step:
    - It retrieves the modification timestamp (`mtime`) of `issues.jsonl` and `db.sqlite`.
    - If `issues.jsonl` has a newer timestamp than `db.sqlite` (or if the database does not exist), the system rebuilds the database from scratch.
 2. **Rebuild Steps**:
    - The database file tables are dropped and recreated.
    - The system reads `issues.jsonl` line by line.
-   - Each line is deserialized and validated against the JSON Schema in [task_schema.py](file:///home/zl/Developments/LeanTask/task_schema.py). Invalid records are skipped and logged.
+   - Each line is deserialized and validated against the JSON Schema in [task_schema.py](task_schema.py). Invalid records are skipped and logged.
    - Valid records are inserted or replaced into the `tasks`, `task_history`, and `task_comments` SQLite tables.
    - Indexes on frequently searched columns (`status`, `project`) are built to guarantee quick query retrieval.
 
@@ -120,22 +120,22 @@ The project code is divided into functional components as follows:
 
 | Module / File | Core Responsibility | Public APIs / Interface |
 | :--- | :--- | :--- |
-| **[task_cli.py](file:///home/zl/Developments/LeanTask/task_cli.py)** | Main Entry Point. Parses CLI flags and dispatches arguments to sub-modules. | `main()` |
-| **[task_cli_submit.py](file:///home/zl/Developments/LeanTask/task_cli_submit.py)** | Submits new raw tasks. Fast offline append with randomized `task_id` creation. | [submit(raw_string)](file:///home/zl/Developments/LeanTask/task_cli_submit.py#L8) |
-| **[task_cli_workbench.py](file:///home/zl/Developments/LeanTask/task_cli_workbench.py)** | Handles task mutations (descriptions, due dates, statuses, tags, comments, priorities) and views. | `search()`, `comment()`, `due()`, `list_tasks()`, `view()`, `state()`, `priority()`, `project()`, `title()`, `description()`, `tags()`, `blocked_by()` |
-| **[task_cli_report.py](file:///home/zl/Developments/LeanTask/task_cli_report.py)** | Computes task blocker hierarchies and urgency levels to output a daily Markdown report. | [report()](file:///home/zl/Developments/LeanTask/task_cli_report.py#L4) |
-| **[task_cli_bulk.py](file:///home/zl/Developments/LeanTask/task_cli_bulk.py)** | Formats bulk tasks to `stdout` as JSON arrays or imports tasks from `stdin`/file. | [export_tasks(status=None)](file:///home/zl/Developments/LeanTask/task_cli_bulk.py#L9), [import_tasks(file_path=None)](file:///home/zl/Developments/LeanTask/task_cli_bulk.py#L66) |
-| **[task_cli_clean.py](file:///home/zl/Developments/LeanTask/task_cli_clean.py)** | Manages database cache cleanup. Support soft cache wipes and hard logs resets. | [clean(hard=False)](file:///home/zl/Developments/LeanTask/task_cli_clean.py#L5) |
-| **[task_db.py](file:///home/zl/Developments/LeanTask/task_db.py)** | Database initialization, schema definition, auto-hydration logic, and SQLite accessors. | [get_connection()](file:///home/zl/Developments/LeanTask/task_db.py#L149), [hydrate_if_needed()](file:///home/zl/Developments/LeanTask/task_db.py#L131) |
-| **[task_schema.py](file:///home/zl/Developments/LeanTask/task_schema.py)** | JSON Schema validation rules. Ensures data integrity before SQLite inserts. | [validate_task(task_obj)](file:///home/zl/Developments/LeanTask/task_schema.py#L94) |
-| **[task_sync.py](file:///home/zl/Developments/LeanTask/task_sync.py)** | Event reconciliation, last-write-wins merging, and status precedence resolution rules. | [sync_issues()](file:///home/zl/Developments/LeanTask/task_sync.py#L47), [merge_tasks(t1, t2)](file:///home/zl/Developments/LeanTask/task_sync.py#L15) |
-| **[gui.py](file:///home/zl/Developments/LeanTask/gui.py)** | Desktop graphical user interface built with CustomTkinter for visualization and management. | `TaskManagerApp` |
+| **[task_cli.py](task_cli.py)** | Main Entry Point. Parses CLI flags and dispatches arguments to sub-modules. | `main()` |
+| **[task_cli_submit.py](task_cli_submit.py)** | Submits new raw tasks. Fast offline append with randomized `task_id` creation. | [submit(raw_string)](task_cli_submit.py#L8) |
+| **[task_cli_workbench.py](task_cli_workbench.py)** | Handles task mutations (descriptions, due dates, statuses, tags, comments, priorities) and views. | `search()`, `comment()`, `due()`, `list_tasks()`, `view()`, `state()`, `priority()`, `project()`, `title()`, `description()`, `tags()`, `blocked_by()` |
+| **[task_cli_report.py](task_cli_report.py)** | Computes task blocker hierarchies and urgency levels to output a daily Markdown report. | [report()](task_cli_report.py#L4) |
+| **[task_cli_bulk.py](task_cli_bulk.py)** | Formats bulk tasks to `stdout` as JSON arrays or imports tasks from `stdin`/file. | [export_tasks(status=None)](task_cli_bulk.py#L9), [import_tasks(file_path=None)](task_cli_bulk.py#L66) |
+| **[task_cli_clean.py](task_cli_clean.py)** | Manages database cache cleanup. Support soft cache wipes and hard logs resets. | [clean(hard=False)](task_cli_clean.py#L5) |
+| **[task_db.py](task_db.py)** | Database initialization, schema definition, auto-hydration logic, and SQLite accessors. | [get_connection()](task_db.py#L149), [hydrate_if_needed()](task_db.py#L131) |
+| **[task_schema.py](task_schema.py)** | JSON Schema validation rules. Ensures data integrity before SQLite inserts. | [validate_task(task_obj)](task_schema.py#L94) |
+| **[task_sync.py](task_sync.py)** | Event reconciliation, last-write-wins merging, and status precedence resolution rules. | [sync_issues()](task_sync.py#L47), [merge_tasks(t1, t2)](task_sync.py#L15) |
+| **[gui.py](gui.py)** | Desktop graphical user interface built with CustomTkinter for visualization and management. | `TaskManagerApp` |
 
 ---
 
 ## 4. SQLite Schema Details
 
-The SQLite cache consists of three tables, defined in [task_db.py](file:///home/zl/Developments/LeanTask/task_db.py):
+The SQLite cache consists of three tables, defined in [task_db.py](task_db.py):
 
 ### 1. `tasks` Table
 Stores the flattened current state of all tasks.
@@ -175,7 +175,7 @@ Stores user comments appended to tasks.
 
 ## 5. Data Validation & JSON Schema
 
-Before loading into SQLite, all objects are verified against `TASK_SCHEMA` defined in [task_schema.py](file:///home/zl/Developments/LeanTask/task_schema.py) using the Python `jsonschema` library.
+Before loading into SQLite, all objects are verified against `TASK_SCHEMA` defined in [task_schema.py](task_schema.py) using the Python `jsonschema` library.
 
 ### Key Schema Validation Constraints:
 - `task_id` pattern matching: Regex `^[a-z0-9]{2}-[a-z0-9]{4}$` (e.g., `ab-1234`).
