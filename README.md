@@ -1,126 +1,232 @@
-# Distributed Task Management CLI
+# LeanTask: Distributed Git-Tracked Task Management CLI
 
-A lightweight, local, Git-tracked task management system. It uses an append-only JSONL event sourcing model with a SQLite read-cache to provide seamless task management across distributed Git branches.
+LeanTask is a lightweight, decentralized task management system designed to run entirely locally while integrating seamlessly with distributed version control systems like Git. 
 
-## Architecture
+It uses an **append-only JSONL (JSON Lines) event sourcing model** as the primary source of truth, complemented by an **auto-hydrating SQLite read cache** for high-performance querying and a **custom Tkinter graphical dashboard** for visual interaction.
 
-- **Primary Source of Truth**: `.tasks/issues.jsonl` (Append-only JSONL log tracked in Git).
-- **Read Cache**: `.tasks/db.sqlite` (Auto-hydrated SQLite database for querying tasks).
-- **Git Integration**: `.gitattributes` uses Git's native union merge driver on the JSONL file to merge concurrent actions deterministically.
+---
+
+## Key Features & Core Philosophy
+
+- **Git-Native & Collaborative**: Standard project issue trackers (like Jira or GitHub Issues) require central databases and internet connectivity. LeanTask stores all tasks inside your project repository under `.tasks/issues.jsonl`. 
+- **Deterministic Merge Conflict Resolution**: By using Git's native `union` merge strategy and LeanTask's deterministic reconciliation engine, multiple developers can modify or create tasks offline and merge branches without manual conflicts.
+- **Zero-Latency Capture**: Task creation is optimized for speed (<15ms latency) by appending directly to the JSONL log, making it perfect for instantaneous capture from scripts, hotkeys, or shell aliases.
+- **Auto-Hydrating Cache**: High-performance querying, keyword searches, and dependency sorting are powered by a local SQLite read cache (`.tasks/db.sqlite`) that automatically rebuilds itself when it detects the JSONL log is newer.
+- **Beautiful Graphical Dashboard**: A sleek desktop app built with `customtkinter` allows you to visualize, filter, search, comment on, and manage tasks without touching the command line.
+
+---
+
+## Architecture Overview
+
+```
+                        +----------------------+
+                        |   User Input (CLI)   |
+                        +----------+-----------+
+                                   |
+                                   v
++------------------+     +---------+-----------+     +------------------+
+|  Custom Tkinter  |---->|   task_cli.py (App) |<----|  External AI     |
+|   GUI (gui.py)   |     +---------+-----------+     |  (Bulk Import)   |
++------------------+               |                 +------------------+
+                                   v
+                        +----------+-----------+
+                        |  .tasks/issues.jsonl |  <--- Git-tracked Source of Truth
+                        +----------+-----------+
+                                   |
+                           (Auto-Hydration)
+                                   v
+                        +----------+-----------+
+                        |  .tasks/db.sqlite    |  <--- SQLite Read Cache
+                        +----------------------+
+```
+
+1. **Source of Truth (`.tasks/issues.jsonl`)**: An append-only log of tasks. Each line contains a complete JSON representation of a task.
+2. **Rehydration Layer ([task_db.py](task_db.py))**: Instantly compares file modification timestamps. If `issues.jsonl` is newer than `db.sqlite`, the cache is wiped, validated against the JSON Schema, and rebuilt in SQLite.
+3. **Union Merging & Reconciliation ([task_sync.py](task_sync.py))**: Merges duplicate records for the same task using status precedence overrides (e.g. `closed` > `open`) and chronological sorting of history/comments.
+
+---
 
 ## Installation & Setup
 
-1. Install requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Install Dependencies
+Make sure you have Python 3.8+ installed. Install the Python requirements:
+```bash
+pip install -r requirements.txt
+```
 
-2. Initialize the workspace (if starting from scratch):
-   ```bash
-   make init
-   ```
+> **Note for Linux Users**: The graphical dashboard requires Python's native `tkinter` bindings. If you receive a `ModuleNotFoundError: No module named 'tkinter'`, install it via your distribution's package manager:
+> - **Ubuntu/Debian**: `sudo apt-get install python3-tk`
+> - **Fedora/CentOS/RHEL**: `sudo dnf install python3-tkinter`
+> - **Arch Linux**: `sudo pacman -S tk`
 
-## Usage
+### 2. Initialize the Workspace
+If initializing a new repository or starting fresh, run:
+```bash
+make init
+```
+This sets up the `.tasks/` directory and configures Git to use the `union` merge driver for `.tasks/issues.jsonl` via `.gitattributes`.
 
-You can run the CLI via `./task_cli.py <command>`.
+---
 
-### GUI Dashboard
-A graphical dashboard (beautified with **CustomTkinter**) is available to view and interact with tasks without the CLI.
+## 5-Minute Quick Start Tutorial
 
-> **Note:** The GUI requires `customtkinter`, which is listed in `requirements.txt`. Make sure to install it via `pip install -r requirements.txt`. Additionally, the base `tkinter` package may be omitted by default on some Linux distributions. If you get a `ModuleNotFoundError: No module named 'tkinter'` error, install it via your package manager (e.g., `sudo apt-get install python3-tk` on Ubuntu/Debian).
+Let's walk through a typical workflow:
 
+### Step 1: Submit a Task
+Create a new task instantaneously:
+```bash
+./task_cli.py submit "Fix memory leak in SPI driver #network #bug"
+```
+*Output:* Prints a unique task ID (e.g., `ef-a48b`).
+
+### Step 2: List and Find the Task
+List all open tasks:
+```bash
+./task_cli.py list open
+```
+Search for tasks mentioning "memory":
+```bash
+./task_cli.py search "memory"
+```
+
+### Step 3: Inspect Task Details
+View the full details and comments of your task:
+```bash
+./task_cli.py view ef-a48b
+```
+
+### Step 4: Modify Task Attributes
+Update priority, project, and description:
+```bash
+./task_cli.py priority ef-a48b 4.5
+./task_cli.py project ef-a48b "Firmware"
+./task_cli.py description ef-a48b "Investigate circular buffer allocation leak under high SPI traffic."
+```
+
+### Step 5: Add a Comment
+Collaborate or record progress notes:
+```bash
+./task_cli.py comment ef-a48b "Reviewed buffer allocations; issue seems to be in spi_dma.c line 142."
+```
+
+### Step 6: Mark as In Progress or Blocked
+Update status states:
+```bash
+./task_cli.py state ef-a48b in_progress
+```
+
+### Step 7: Launch the GUI
+Prefer a visual workflow? Fire up the customtkinter dashboard:
 ```bash
 python gui.py
 ```
-- **Dashboard**: Displays a list of tasks with their IDs, statuses, priorities, projects, due dates, and titles.
-- **Submit Task**: Click the "Submit Task" button to quickly add a raw text task.
-- **Task Details & Updates**: Double-click any task in the list to open its details window. From there, you can view its full description and easily update fields such as status, priority, or tags. Click "Update Task" to apply changes.
+Double-click any task in the list to update its properties, add tags, or post comments.
 
-### 1. Submit Client (Tier 1)
+---
 
-Submit raw task input instantaneously. This will append a placeholder JSON structure directly to the tracking log.
+## CLI Command Reference Table
 
+All commands are executed via [task_cli.py](task_cli.py).
+
+| Command | Usage | Description |
+| :--- | :--- | :--- |
+| `submit` | `./task_cli.py submit "<text>"` | Submits raw input and creates a task with a randomized ID. |
+| `search` | `./task_cli.py search "<keyword>"` | Searches titles, descriptions, and tags in the SQLite cache. |
+| `comment` | `./task_cli.py comment <task_id> "<comment>"` | Appends a comment to the task's comment array. |
+| `state` | `./task_cli.py state <task_id> <state>` | Updates status (`open`, `in_progress`, `blocked`, `deferred`, `closed`). |
+| `priority` | `./task_cli.py priority <task_id> <score>` | Sets a priority score between `0.0` and `5.0`. |
+| `project` | `./task_cli.py project <task_id> "<project>"` | Assigns the task to a specific project module. |
+| `title` | `./task_cli.py title <task_id> "<title>"` | Updates the title of the task. |
+| `description`| `./task_cli.py description <task_id> "<desc>"` | Updates the detailed description. |
+| `tags` | `./task_cli.py tags <task_id> <tag1> [tag2 ...]` | Sets tags (e.g. `bug` `feature`). |
+| `blocked_by` | `./task_cli.py blocked_by <task_id> <dep_id1> ...`| Lists parent task IDs blocking this task. |
+| `due` | `./task_cli.py due <task_id> "<datetime>"` | Sets a due date (ISO 8601 format). |
+| `list` | `./task_cli.py list <status>` | Lists tasks by status, or use `all` to see everything. |
+| `view` | `./task_cli.py view <task_id>` | Prints the task details, edit history, and comments. |
+| `report` | `./task_cli.py report` | Generates a daily markdown progress report. |
+| `sync` | `./task_cli.py sync` | Deteministically merges duplicate tasks in `issues.jsonl`. |
+| `export` | `./task_cli.py export [--status <status>]` | Exports tasks as a JSON array (perfect for AI agents). |
+| `import` | `./task_cli.py import <file_path>` | Imports a JSON array of tasks and automatically syncs them. |
+| `clean` | `./task_cli.py clean [--hard]` | Deletes SQLite cache (soft) or the entire `.tasks/` dir (hard). |
+| `help` | `./task_cli.py help` | Displays CLI syntax help. |
+
+---
+
+## Detailed Command Documentation
+
+### Task Capture & Creation
+- **`submit`**: Designed to be instantaneous (<15ms) to prevent interrupting development flow. It creates a task matching the JSON Schema with `status="open"`, `priority_score=0.0`, and `project="untriaged"`.
+  ```bash
+  ./task_cli.py submit "Fix SPI buffer overflow"
+  ```
+
+### Task Modification
+- **`state`**: Transitions a task between `open`, `in_progress`, `blocked`, `deferred`, and `closed`.
+- **`priority`**: Sets priority levels. Accepts floats `0.0` (lowest) to `5.0` (highest).
+- **`blocked_by`**: Declares dependencies. If task `ab-1234` is blocked by `xy-5678`, it will show up as blocked in daily reports until `xy-5678` is closed.
+  ```bash
+  ./task_cli.py blocked_by ab-1234 xy-5678
+  ```
+
+### Synthesized Reports
+- **`report`**: The agent-oriented report splits active issues into:
+  1. **The Daily Matrix**: Active, unblocked tasks sorted by priority score (descending).
+  2. **The Triage Queue**: Unprioritized tasks (open tasks with score `0.0`).
+  3. **Blocker Alerts**: Active tasks that are blocked by one or more incomplete tasks.
+
+### AI Agent Integration & Bulk Operations
+LeanTask is fully compatible with AI agents for bulk triage or automated task enrichment. See [BULK_RETRIEVAL_DOCS.md](BULK_RETRIEVAL_DOCS.md) for detailed JSON schemas and pipeline examples.
+
+---
+
+## Graphical User Interface (GUI) Guide
+
+LeanTask includes a desktop dashboard app built with **CustomTkinter** that provides a complete visual alternative to the command-line interface.
+
+### Running the GUI
+To start the dashboard, execute:
 ```bash
-./task_cli.py submit "Fix SPI memory leak #network #bug"
+python gui.py
 ```
 
-### 2. Interactive Workbench (Tier 2)
+### GUI Architecture & Features
 
-Manage tasks via standard commands.
+#### 1. Main Dashboard Window
+- **Overview**: Lists all current tasks inside a database grid, providing a birds-eye view of your task space.
+- **Task Grid Columns**: Shows columns for `ID`, `Status`, `Priority`, `Project`, `Due`, and `Title`.
+- **Status Color-Coding**:
+  - **Green** (Background: `#d4edda`): `open` tasks.
+  - **Blue** (Background: `#cce5ff`): `in_progress` tasks.
+  - **Red** (Background: `#f8d7da`): `blocked` tasks.
+  - **Yellow** (Background: `#fff3cd`): `deferred` tasks.
+  - **Grey** (Background: `#e2e3e5`): `closed` tasks.
+- **Refresh Dashboard**: The **Refresh** button synchronizes tasks with `.tasks/issues.jsonl` (running the conflict-resolution engine) and reloads the grid from the SQLite cache.
+- **Create a Task**: The **Submit Task** button prompts for a raw string (e.g. `Configure UART baudrate #hardware`) and appends the new task to the log.
 
-- **Search** for tasks by keywords or tags:
-  ```bash
-  ./task_cli.py search "memory"
-  ```
+#### 2. Detailed Task Editing Window
+- **Access**: Double-click any task in the main dashboard grid to open a dedicated task inspector window.
+- **Field Editors**: Provides quick controls to edit:
+  - **Title** & **Description**: Modify task summaries or details.
+  - **Status Dropdown**: Switch between task states (`open`, `in_progress`, `blocked`, `deferred`, `closed`).
+  - **Priority (0.0 - 5.0)**: Update priority scores.
+  - **Project**: Assign tasks to modules or project namespaces.
+  - **Due Date**: Manually adjust deadlines.
+  - **Tags**: Edit tags using a comma-separated list.
+  - **Update Task Button**: Clicking this writes updates to the log and auto-rehydrates the database cache.
 
-- **Comment** on an existing task:
-  ```bash
-  ./task_cli.py comment <task_id> "Buffer allocations reviewed"
-  ```
+#### 3. Integrated Collaboration Feed (Comments)
+- **Overview**: Allows developers to communicate or log progress notes directly inside the task editing window.
+- **Comments Log**: Displays a scrollable feed of comments sorted chronologically, showing timestamps and authors.
+- **Post a Comment**: Input your comment in the text field at the bottom and click **Add** to append it to the task comment log.
 
-- **State Changes**:
-  Change a task state (`open`, `in_progress`, `blocked`, `deferred`, `closed`).
-  ```bash
-  ./task_cli.py state <task_id> in_progress
-  ```
-
-- **Set Due Date**:
-  Update a task's due date.
-  ```bash
-  ./task_cli.py due <task_id> "2024-12-31T23:59:59Z"
-  ```
-
-- **List Tasks**:
-  List tasks filtered by a specific status, or view all tasks.
-  ```bash
-  ./task_cli.py list open
-  ./task_cli.py list all
-  ```
-
-### 3. Agent Reporter (Tier 3)
-
-View a formatted Markdown progress report summarizing active priorities and blockers.
-
-```bash
-./task_cli.py report
-```
-
-### AI Agent Integration (Bulk Triage)
-
-External AI Agents (like Copilot CLI or Gemini CLI) can interface with the system for triage through the bulk import/export commands:
-
-- **Export Tasks**: Download a JSON array of tasks (e.g. ones that are `open` or un-triaged):
-  ```bash
-  ./task_cli.py export --status open > to_triage.json
-  ```
-- **Import Tasks**: Once the AI agent has modified the JSON array (setting tags, calculating Urgency Scores), the updated JSON is imported back in:
-  ```bash
-  ./task_cli.py import to_triage.json
-  ```
-
-### Synchronization
-
-- **Sync (Conflict Resolution)**: When merging branches, git `union` merge might create multiple JSON lines for the same `task_id`. Run `sync` to deterministically merge them (resolving history, comments, and priority statuses chronologically).
-  ```bash
-  ./task_cli.py sync
-  ```
-
-### Maintenance / Clean
-
-- **Clean Cache**: Delete the local SQLite read-cache database (`.tasks/db.sqlite`). It will be automatically rebuilt the next time a command is executed.
-  ```bash
-  ./task_cli.py clean
-  ```
-
-- **Hard Clean**: Delete the entire `.tasks/` directory, wiping all logs and the database. Use with caution!
-  ```bash
-  ./task_cli.py clean --hard
-  ```
+---
 
 ## Testing
 
-Run the test suite to verify the application:
+LeanTask has a comprehensive test suite covering database rehydration, Git union merges, conflict resolution rules, and latency benchmarks.
 
+To execute the unit tests, simply run:
 ```bash
 make test
 ```
+*(or run `python -m unittest test_task_cli.py` directly)*
