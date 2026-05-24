@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from task_db import get_connection
 from task_cli_submit import submit
-from task_cli_workbench import state, priority, project, title, description, tags, due
+from task_cli_workbench import state, priority, project, title, description, tags, due, comment
 from task_sync import sync_issues
 
 class TaskManagerApp:
@@ -113,7 +113,7 @@ class TaskManagerApp:
 
         details_window = tk.Toplevel(self.root)
         details_window.title(f"Task Details - {task_id}")
-        details_window.geometry("500x500")
+        details_window.geometry("600x750")
 
         # UI Fields
         tk.Label(details_window, text="Title:").grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
@@ -197,6 +197,52 @@ class TaskManagerApp:
 
         btn_save = tk.Button(details_window, text="Update Task", command=save_changes)
         btn_save.grid(row=7, column=1, pady=20)
+
+        # --- Comments Section ---
+        tk.Label(details_window, text="Comments:").grid(row=8, column=0, sticky=tk.NW, padx=10, pady=5)
+
+        comments_listbox = tk.Listbox(details_window, width=50, height=8)
+        comments_listbox.grid(row=8, column=1, sticky=tk.W, padx=10, pady=5)
+
+        def load_comments():
+            comments_listbox.delete(0, tk.END)
+            try:
+                # Sync might be needed if comments were added externally or just now
+                sync_issues()
+                c_conn = get_connection()
+                c_cursor = c_conn.cursor()
+                c_cursor.execute("SELECT timestamp, author, text FROM task_comments WHERE task_id = ? ORDER BY timestamp ASC", (task_id,))
+                c_rows = c_cursor.fetchall()
+                for cr in c_rows:
+                    display_text = f"[{cr[0][:10]}] {cr[1]}: {cr[2]}"
+                    comments_listbox.insert(tk.END, display_text)
+                c_conn.close()
+            except Exception as e:
+                print(f"Error loading comments: {e}")
+
+        load_comments()
+
+        tk.Label(details_window, text="Add Comment:").grid(row=9, column=0, sticky=tk.NW, padx=10, pady=5)
+
+        comment_frame = tk.Frame(details_window)
+        comment_frame.grid(row=9, column=1, sticky=tk.W, padx=10, pady=5)
+
+        entry_comment = tk.Entry(comment_frame, width=38)
+        entry_comment.pack(side=tk.LEFT)
+
+        def on_add_comment():
+            new_c = entry_comment.get().strip()
+            if new_c:
+                try:
+                    comment(task_id, new_c)
+                    entry_comment.delete(0, tk.END)
+                    load_comments()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to add comment: {str(e)}")
+
+        btn_add_comment = tk.Button(comment_frame, text="Add", command=on_add_comment)
+        btn_add_comment.pack(side=tk.LEFT, padx=5)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
