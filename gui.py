@@ -53,6 +53,12 @@ class TaskManagerApp:
         self.tree.configure(yscroll=scrollbar.set)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
+        self.tree.tag_configure("open", background="#d4edda", foreground="black")
+        self.tree.tag_configure("in_progress", background="#cce5ff", foreground="black")
+        self.tree.tag_configure("blocked", background="#f8d7da", foreground="black")
+        self.tree.tag_configure("deferred", background="#fff3cd", foreground="black")
+        self.tree.tag_configure("closed", background="#e2e3e5", foreground="black")
+
         self.tree.bind("<Double-1>", self.on_task_double_click)
 
     def refresh_tasks(self):
@@ -69,7 +75,8 @@ class TaskManagerApp:
 
             for row in rows:
                 due_val = row[4] if row[4] else "None"
-                self.tree.insert("", tk.END, values=(row[0], row[1].upper(), row[2], row[3], due_val, row[5]))
+                status_tag = row[1].lower()
+                self.tree.insert("", tk.END, values=(row[0], row[1].upper(), row[2], row[3], due_val, row[5]), tags=(status_tag,))
 
             conn.close()
         except Exception as e:
