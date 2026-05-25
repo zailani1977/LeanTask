@@ -3,7 +3,7 @@ import customtkinter as ctk
 from tkinter import ttk, messagebox, simpledialog
 from task_db import get_connection
 from task_cli_submit import submit
-from task_cli_workbench import state, priority, project, title, description, tags, due, comment
+from task_cli_workbench import state, priority, project, title, description, tags, due, comment, archive_tasks
 from task_sync import sync_issues
 
 class TaskManagerApp:
@@ -24,7 +24,15 @@ class TaskManagerApp:
         self.btn_refresh.pack(side=tk.LEFT, padx=5)
 
         self.btn_submit = ctk.CTkButton(top_frame, text="Submit Task", command=self.submit_task)
+
         self.btn_submit.pack(side=tk.LEFT, padx=5)
+
+        self.btn_archive = ctk.CTkButton(top_frame, text="Archive", command=self.archive_and_refresh)
+        self.btn_archive.pack(side=tk.LEFT, padx=5)
+
+        self.btn_view_archive = ctk.CTkButton(top_frame, text="View Archive", command=self.open_view_archive)
+        self.btn_view_archive.pack(side=tk.LEFT, padx=5)
+
 
         # Main Frame for Treeview
         main_frame = ctk.CTkFrame(self.root)
@@ -60,6 +68,166 @@ class TaskManagerApp:
         self.tree.tag_configure("closed", background="#e2e3e5", foreground="black")
 
         self.tree.bind("<Double-1>", self.on_task_double_click)
+
+
+    def archive_and_refresh(self):
+        try:
+            count = archive_tasks()
+            messagebox.showinfo("Archive", f"Successfully archived {count} tasks.")
+            self.refresh_tasks()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to archive tasks: {str(e)}")
+
+
+    def open_view_archive(self):
+        archive_window = ctk.CTkToplevel(self.root)
+        archive_window.title("Archived Tasks")
+        archive_window.geometry("900x600")
+
+        main_frame = ctk.CTkFrame(archive_window)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        columns = ("ID", "Status", "Priority", "Project", "Due", "Title")
+        self.archive_tree = ttk.Treeview(main_frame, columns=columns, show="headings")
+
+        self.archive_tree.heading("ID", text="ID")
+        self.archive_tree.heading("Status", text="Status")
+        self.archive_tree.heading("Priority", text="Priority")
+        self.archive_tree.heading("Project", text="Project")
+        self.archive_tree.heading("Due", text="Due")
+        self.archive_tree.heading("Title", text="Title")
+
+        self.archive_tree.column("ID", width=100)
+        self.archive_tree.column("Status", width=100)
+        self.archive_tree.column("Priority", width=80)
+        self.archive_tree.column("Project", width=120)
+        self.archive_tree.column("Due", width=100)
+        self.archive_tree.column("Title", width=350)
+
+        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=self.archive_tree.yview)
+        self.archive_tree.configure(yscroll=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.archive_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.archive_tree.bind("<Double-1>", self.on_archived_task_double_click)
+
+        self.refresh_archive_tasks()
+
+    def refresh_archive_tasks(self):
+        for item in self.archive_tree.get_children():
+            self.archive_tree.delete(item)
+
+        try:
+            import os
+            import json
+            ARCHIVE_FILE = ".tasks/archive.jsonl"
+            if not os.path.exists(ARCHIVE_FILE):
+                return
+
+            with open(ARCHIVE_FILE, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip(): continue
+                    task = json.loads(line)
+                    due_val = task.get("due_date") if task.get("due_date") else "None"
+                    status_tag = task.get("status", "").lower()
+                    self.archive_tree.insert("", tk.END, values=(task.get("task_id"), task.get("status", "").upper(), task.get("priority_score"), task.get("project"), due_val, task.get("title")), tags=(status_tag,))
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not load archived tasks: {str(e)}")
+
+
+    def on_archived_task_double_click(self, event):
+        selection = self.archive_tree.selection()
+        if not selection:
+            return
+        item = selection[0]
+        task_id = self.archive_tree.item(item, "values")[0]
+        self.open_archived_task_details(task_id)
+
+    def open_archived_task_details(self, task_id):
+        import os
+        import json
+        ARCHIVE_FILE = ".tasks/archive.jsonl"
+        found_task = None
+
+        try:
+            with open(ARCHIVE_FILE, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip(): continue
+                    task = json.loads(line)
+                    if task.get("task_id") == task_id:
+                        found_task = task
+                        break
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not fetch archived task details: {str(e)}")
+            return
+
+        if not found_task:
+            messagebox.showerror("Error", "Archived task not found.")
+            return
+
+        details_window = ctk.CTkToplevel(self.root)
+        details_window.title(f"Archived Task Details - {task_id}")
+        details_window.geometry("600x750")
+
+        # UI Fields - Read Only
+        ctk.CTkLabel(details_window, text="Title:").grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_title = ctk.CTkEntry(details_window, width=300)
+        entry_title.insert(0, found_task.get("title", ""))
+        entry_title.configure(state="disabled")
+        entry_title.grid(row=0, column=1, padx=10, pady=5)
+
+        ctk.CTkLabel(details_window, text="Description:").grid(row=1, column=0, sticky=tk.NW, padx=10, pady=5)
+        text_desc = ctk.CTkTextbox(details_window, width=300, height=80)
+        text_desc.insert(tk.END, found_task.get("description", ""))
+        text_desc.configure(state="disabled")
+        text_desc.grid(row=1, column=1, padx=10, pady=5)
+
+        ctk.CTkLabel(details_window, text="Status:").grid(row=2, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_status = ctk.CTkEntry(details_window, width=150)
+        entry_status.insert(0, found_task.get("status", ""))
+        entry_status.configure(state="disabled")
+        entry_status.grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
+
+        ctk.CTkLabel(details_window, text="Priority:").grid(row=3, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_priority = ctk.CTkEntry(details_window, width=60)
+        entry_priority.insert(0, str(found_task.get("priority_score", "")))
+        entry_priority.configure(state="disabled")
+        entry_priority.grid(row=3, column=1, sticky=tk.W, padx=10, pady=5)
+
+        ctk.CTkLabel(details_window, text="Project:").grid(row=4, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_project = ctk.CTkEntry(details_window, width=150)
+        entry_project.insert(0, found_task.get("project", ""))
+        entry_project.configure(state="disabled")
+        entry_project.grid(row=4, column=1, sticky=tk.W, padx=10, pady=5)
+
+        ctk.CTkLabel(details_window, text="Due Date:").grid(row=5, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_due = ctk.CTkEntry(details_window, width=150)
+        due_val = found_task.get("due_date") if found_task.get("due_date") else ""
+        entry_due.insert(0, due_val)
+        entry_due.configure(state="disabled")
+        entry_due.grid(row=5, column=1, sticky=tk.W, padx=10, pady=5)
+
+        ctk.CTkLabel(details_window, text="Tags:").grid(row=6, column=0, sticky=tk.W, padx=10, pady=5)
+        entry_tags = ctk.CTkEntry(details_window, width=200)
+        tags_list = found_task.get("tags", [])
+        entry_tags.insert(0, ",".join(tags_list))
+        entry_tags.configure(state="disabled")
+        entry_tags.grid(row=6, column=1, sticky=tk.W, padx=10, pady=5)
+
+        # --- Comments Section ---
+        ctk.CTkLabel(details_window, text="Comments:").grid(row=8, column=0, sticky=tk.NW, padx=10, pady=5)
+
+        comments_listbox = ctk.CTkTextbox(details_window, width=300, height=120)
+        comments_listbox.grid(row=8, column=1, sticky=tk.W, padx=10, pady=5)
+
+        comments = found_task.get("comments", [])
+        for c in comments:
+            display_text = f"[{c.get('timestamp')[:10]}] {c.get('author')}: {c.get('text')}"
+            comments_listbox.insert("end", display_text + "\n")
+        comments_listbox.configure(state="disabled")
+
+
 
     def refresh_tasks(self):
         # Clear existing items
