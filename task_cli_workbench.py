@@ -309,3 +309,109 @@ def blocked_by(task_id, blocked_by_list):
 
     if _update_task_in_jsonl(task_id, change_blocked_by):
         print(f"Blocked by of {task_id} changed.")
+
+def archive_tasks():
+    import os
+    tasks_to_keep = []
+    tasks_to_archive = []
+
+    if not os.path.exists(ISSUES_FILE):
+        print("No issues file found.")
+        return 0
+
+    with open(ISSUES_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            if not line.strip(): continue
+            task = json.loads(line)
+            if task.get("status") in ["closed", "deferred"]:
+                tasks_to_archive.append(task)
+            else:
+                tasks_to_keep.append(task)
+
+    if not tasks_to_archive:
+        print("No tasks to archive.")
+        return 0
+
+    ARCHIVE_FILE = ".tasks/archive.jsonl"
+    os.makedirs(os.path.dirname(ARCHIVE_FILE), exist_ok=True)
+
+    with open(ARCHIVE_FILE, 'a', encoding='utf-8') as f:
+        for t in tasks_to_archive:
+            f.write(json.dumps(t) + "\n")
+
+    with open(ISSUES_FILE, 'w', encoding='utf-8') as f:
+        for t in tasks_to_keep:
+            f.write(json.dumps(t) + "\n")
+
+    print(f"Archived {len(tasks_to_archive)} tasks.")
+
+    # We should sync_issues to make sure sqlite database is updated.
+    from task_sync import sync_issues
+    sync_issues()
+
+    return len(tasks_to_archive)
+
+def view_archive(task_id=None):
+    import os
+    ARCHIVE_FILE = ".tasks/archive.jsonl"
+
+    if not os.path.exists(ARCHIVE_FILE):
+        print("No archive file found.")
+        return
+
+    archived_tasks = []
+    with open(ARCHIVE_FILE, 'r', encoding='utf-8') as f:
+        for line in f:
+            if not line.strip(): continue
+            archived_tasks.append(json.loads(line))
+
+    if task_id is None:
+        if not archived_tasks:
+            print("Archive is empty.")
+            return
+
+        print("Archived Tasks:")
+        print(f"{'ID':^9} | {'STATUS':^11} | {'PRIORITY':^8} | {'PROJECT':^10} | {'DUE':^10} | TITLE | TAGS")
+        for task in archived_tasks:
+            due_val = task.get("due_date") if task.get("due_date") else "None"
+            status = task.get("status", "").upper()
+            priority_val = task.get("priority_score", 0.0)
+            project_val = task.get("project", "")
+            title_val = task.get("title", "")
+            tags_val = task.get("tags", [])
+            print(f"[{task['task_id']}] {status:^11} | P: {priority_val:<5} | {project_val:^10} | Due: {due_val:<6} | {title_val} | {tags_val}")
+    else:
+        found_task = None
+        for task in archived_tasks:
+            if task.get("task_id") == task_id:
+                found_task = task
+                break
+
+        if not found_task:
+            print(f"Task {task_id} not found in archive.")
+            return
+
+        print("=" * 60)
+        print(f"[{found_task.get('task_id')}] {found_task.get('title')}")
+        print("=" * 60)
+        print(f"Status:     {found_task.get('status', '').upper()}")
+        print(f"Priority:   {found_task.get('priority_score')}")
+        print(f"Project:    {found_task.get('project')}")
+        print(f"Due Date:   {found_task.get('due_date') if found_task.get('due_date') else 'None'}")
+        print(f"Tags:       {found_task.get('tags')}")
+        print(f"Blocked By: {found_task.get('blocked_by')}")
+        print(f"Created:    {found_task.get('created_at')}")
+        print(f"Updated:    {found_task.get('updated_at')}")
+        print("-" * 60)
+        print(f"Description:\n{found_task.get('description')}")
+        print("-" * 60)
+
+        comments = found_task.get("comments", [])
+        if comments:
+            print("Comments:")
+            for c in comments:
+                print(f"  [{c.get('timestamp')}] {c.get('author')}: {c.get('text')}")
+        else:
+            print("No comments.")
+
+        print("=" * 60)

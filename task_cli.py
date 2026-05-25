@@ -3,7 +3,7 @@ import sys
 import argparse
 
 from task_cli_submit import submit
-from task_cli_workbench import search, comment, state, due, list_tasks, view, priority, project, title, description, tags, blocked_by
+from task_cli_workbench import search, comment, state, due, list_tasks, view, priority, project, title, description, tags, blocked_by, archive_tasks, view_archive
 from task_cli_report import report
 from task_sync import sync_issues
 from task_cli_bulk import export_tasks, import_tasks
@@ -74,6 +74,14 @@ def main():
     view_parser = subparsers.add_parser("view", help="View a specific task and its comments")
     view_parser.add_argument("task_id", type=str)
 
+
+    # archive
+    subparsers.add_parser("archive", help="Archive closed and deferred tasks")
+
+    # view_archive
+    view_archive_parser = subparsers.add_parser("view_archive", help="View archive or specific archived task")
+    view_archive_parser.add_argument("task_id", type=str, nargs='?', default=None, help="Task ID to view")
+
     # help
     subparsers.add_parser("help", help="Show this help message")
 
@@ -136,6 +144,11 @@ def main():
         import_tasks(args.file)
     elif args.command == "clean":
         clean(args.hard)
+    elif args.command == "archive":
+        archive_tasks()
+    elif args.command == "view_archive":
+        view_archive(args.task_id)
+
     elif args.command == "init":
         from task_db import init_workspace
         init_workspace()
