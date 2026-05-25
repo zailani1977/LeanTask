@@ -1,10 +1,65 @@
+import os
+import json
 import tkinter as tk
 import customtkinter as ctk
+from PIL import Image, ImageDraw
 from tkinter import ttk, messagebox, simpledialog
 from task_db import get_connection
 from task_cli_submit import submit
 from task_cli_workbench import state, priority, project, title, description, tags, due, comment, archive_tasks
 from task_sync import sync_issues
+
+def ensure_icons():
+    import os
+    from PIL import Image, ImageDraw
+    icon_dir = ".tasks/icons"
+    os.makedirs(icon_dir, exist_ok=True)
+    
+    colors = {
+        "white": (255, 255, 255, 255),
+        "dark": (60, 64, 67, 255),
+        "light": (241, 243, 244, 255)
+    }
+    
+    # 1. Plus Icon (Submit Task)
+    plus_white_path = os.path.join(icon_dir, "plus_white.png")
+    if not os.path.exists(plus_white_path):
+        img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.line((16, 8, 16, 24), fill=colors["white"], width=4)
+        draw.line((8, 16, 24, 16), fill=colors["white"], width=4)
+        img.save(plus_white_path)
+        
+    # 2. Refresh Icons
+    for suffix, color in [("dark", colors["dark"]), ("light", colors["light"])]:
+        path = os.path.join(icon_dir, f"refresh_{suffix}.png")
+        if not os.path.exists(path):
+            img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            draw.arc([6, 6, 26, 26], start=40, end=320, fill=color, width=3)
+            draw.polygon([(24, 4), (24, 12), (16, 8)], fill=color)
+            img.save(path)
+            
+    # 3. Archive Icons
+    for suffix, color in [("dark", colors["dark"]), ("light", colors["light"])]:
+        path = os.path.join(icon_dir, f"archive_{suffix}.png")
+        if not os.path.exists(path):
+            img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            draw.rectangle([6, 12, 26, 25], outline=color, width=3)
+            draw.rectangle([4, 7, 28, 12], outline=color, width=3, fill=color)
+            draw.line((13, 18, 19, 18), fill=color, width=3)
+            img.save(path)
+            
+    # 4. Folder Icons (View Archive)
+    for suffix, color in [("dark", colors["dark"]), ("light", colors["light"])]:
+        path = os.path.join(icon_dir, f"folder_{suffix}.png")
+        if not os.path.exists(path):
+            img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            draw.rectangle([6, 11, 26, 25], outline=color, width=3)
+            draw.polygon([(6, 11), (6, 7), (14, 7), (17, 11)], fill=color)
+            img.save(path)
 
 class TaskManagerApp:
     def __init__(self, root):
@@ -12,63 +67,172 @@ class TaskManagerApp:
         self.root.title("Task Management Dashboard")
         self.root.geometry("900x600")
 
+        # Set root window background color
+        self.root.configure(fg_color=("#F5F7FA", "#1A1C1E"))
+
+        # Setup column headers metadata
+        self.headers_def = [
+            ("ID", 90, "center"),
+            ("Status", 120, "center"),
+            ("Priority", 90, "center"),
+            ("Project", 120, "w"),
+            ("Due", 120, "center"),
+            ("Title", 0, "w")
+        ]
+
         self.create_widgets()
         self.refresh_tasks()
 
+    def get_status_style(self, status):
+        status = status.lower()
+        if status in ("open", "in_progress"):
+            return ("#E6F4EA", "#10301D"), ("#137333", "#81C995")
+        elif status == "blocked":
+            return ("#FCE8E6", "#3C1818"), ("#C5221F", "#F28B82")
+        else: # deferred, closed
+            return ("#F1F3F4", "#2A2B2D"), ("#5F6368", "#9AA0A6")
+
+    def get_priority_style(self, score):
+        try:
+            s = float(score)
+        except (ValueError, TypeError):
+            s = 0.0
+        if s >= 3.5:
+            return ("#FCE8E6", "#3C1818"), ("#C5221F", "#F28B82")
+        elif s >= 1.5:
+            return ("#FEF7E0", "#3A2E10"), ("#B06000", "#FDD663")
+        else:
+            return ("#F1F3F4", "#2A2B2D"), ("#5F6368", "#9AA0A6")
+
     def create_widgets(self):
+        # Generate the PNG icons if they don't exist
+        ensure_icons()
+        icon_dir = ".tasks/icons"
+
+        self.img_plus = ctk.CTkImage(
+            light_image=Image.open(os.path.join(icon_dir, "plus_white.png")),
+            dark_image=Image.open(os.path.join(icon_dir, "plus_white.png")),
+            size=(16, 16)
+        )
+        self.img_refresh = ctk.CTkImage(
+            light_image=Image.open(os.path.join(icon_dir, "refresh_dark.png")),
+            dark_image=Image.open(os.path.join(icon_dir, "refresh_light.png")),
+            size=(16, 16)
+        )
+        self.img_archive = ctk.CTkImage(
+            light_image=Image.open(os.path.join(icon_dir, "archive_dark.png")),
+            dark_image=Image.open(os.path.join(icon_dir, "archive_light.png")),
+            size=(16, 16)
+        )
+        self.img_view_archive = ctk.CTkImage(
+            light_image=Image.open(os.path.join(icon_dir, "folder_dark.png")),
+            dark_image=Image.open(os.path.join(icon_dir, "folder_light.png")),
+            size=(16, 16)
+        )
+
+        # Main layout parent container (provides outer window padding)
+        parent_container = ctk.CTkFrame(self.root, fg_color=("#F5F7FA", "#1A1C1E"))
+        parent_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
         # Top Frame for Buttons
-        top_frame = ctk.CTkFrame(self.root)
-        top_frame.pack(fill=tk.X, padx=10, pady=10)
+        top_frame = ctk.CTkFrame(parent_container, fg_color="transparent")
+        top_frame.pack(fill=tk.X, pady=(0, 20))
 
-        self.btn_refresh = ctk.CTkButton(top_frame, text="Refresh", command=self.refresh_tasks)
-        self.btn_refresh.pack(side=tk.LEFT, padx=5)
+        # Split Layout for Top Buttons
+        left_bar = ctk.CTkFrame(top_frame, fg_color="transparent")
+        left_bar.pack(side=tk.LEFT, fill=tk.Y)
 
-        self.btn_submit = ctk.CTkButton(top_frame, text="Submit Task", command=self.submit_task)
+        right_bar = ctk.CTkFrame(top_frame, fg_color="transparent")
+        right_bar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.btn_submit.pack(side=tk.LEFT, padx=5)
+        # Left Aligned Buttons (Primary/Secondary styles)
+        self.btn_refresh = ctk.CTkButton(
+            left_bar, 
+            text="Refresh", 
+            command=self.refresh_tasks,
+            image=self.img_refresh,
+            font=("Inter", 12, "bold"),
+            border_width=1,
+            border_color=("#BDC1C6", "#5F6368"),
+            fg_color="transparent",
+            text_color=("#3C4043", "#E8EAED"),
+            hover_color=("#F1F3F4", "#3C4043")
+        )
+        self.btn_refresh.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.btn_archive = ctk.CTkButton(top_frame, text="Archive", command=self.archive_and_refresh)
-        self.btn_archive.pack(side=tk.LEFT, padx=5)
+        self.btn_submit = ctk.CTkButton(
+            left_bar, 
+            text="Submit Task", 
+            command=self.submit_task,
+            image=self.img_plus,
+            font=("Inter", 12, "bold"),
+            fg_color=("#1A73E8", "#8AB4F8"),
+            text_color="white",
+            hover_color=("#1557B0", "#669DF6")
+        )
+        self.btn_submit.pack(side=tk.LEFT)
 
-        self.btn_view_archive = ctk.CTkButton(top_frame, text="View Archive", command=self.open_view_archive)
-        self.btn_view_archive.pack(side=tk.LEFT, padx=5)
+        # Right Aligned Buttons
+        self.btn_archive = ctk.CTkButton(
+            right_bar, 
+            text="Archive", 
+            command=self.archive_and_refresh,
+            image=self.img_archive,
+            font=("Inter", 12, "bold"),
+            border_width=1,
+            border_color=("#BDC1C6", "#5F6368"),
+            fg_color="transparent",
+            text_color=("#3C4043", "#E8EAED"),
+            hover_color=("#F1F3F4", "#3C4043")
+        )
+        self.btn_archive.pack(side=tk.LEFT, padx=(0, 10))
 
+        self.btn_view_archive = ctk.CTkButton(
+            right_bar, 
+            text="View Archive", 
+            command=self.open_view_archive,
+            image=self.img_view_archive,
+            font=("Inter", 12, "bold"),
+            border_width=1,
+            border_color=("#BDC1C6", "#5F6368"),
+            fg_color="transparent",
+            text_color=("#3C4043", "#E8EAED"),
+            hover_color=("#F1F3F4", "#3C4043")
+        )
+        self.btn_view_archive.pack(side=tk.LEFT)
 
-        # Main Frame for Treeview
-        main_frame = ctk.CTkFrame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Table Main container frame (pop forward style background)
+        main_frame = ctk.CTkFrame(
+            parent_container, 
+            fg_color=("#FFFFFF", "#242628"), 
+            corner_radius=8,
+            border_width=1,
+            border_color=("#E0E2E6", "#2D3033")
+        )
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        columns = ("ID", "Status", "Priority", "Project", "Due", "Title")
-        self.tree = ttk.Treeview(main_frame, columns=columns, show="headings")
+        # Header bar frame
+        headers_frame = ctk.CTkFrame(main_frame, fg_color=("#FFFFFF", "#242628"), corner_radius=0)
+        headers_frame.pack(fill=tk.X, pady=(0, 5), padx=2)
 
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("Status", text="Status")
-        self.tree.heading("Priority", text="Priority")
-        self.tree.heading("Project", text="Project")
-        self.tree.heading("Due", text="Due")
-        self.tree.heading("Title", text="Title")
+        for i, (text, width, anchor) in enumerate(self.headers_def):
+            headers_frame.columnconfigure(i, weight=1 if text == "Title" else 0, minsize=width)
+            lbl = ctk.CTkLabel(
+                headers_frame, 
+                text=text, 
+                font=("Inter", 12, "bold"),
+                text_color=("#5F6368", "#9AA0A6"),
+                anchor=anchor
+            )
+            lbl.grid(row=0, column=i, sticky="nsew", padx=10, pady=8)
 
-        self.tree.column("ID", width=100)
-        self.tree.column("Status", width=100)
-        self.tree.column("Priority", width=80)
-        self.tree.column("Project", width=100)
-        self.tree.column("Due", width=100)
-        self.tree.column("Title", width=300)
-
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.configure(yscroll=scrollbar.set)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.tree.tag_configure("open", background="#d4edda", foreground="black")
-        self.tree.tag_configure("in_progress", background="#cce5ff", foreground="black")
-        self.tree.tag_configure("blocked", background="#f8d7da", foreground="black")
-        self.tree.tag_configure("deferred", background="#fff3cd", foreground="black")
-        self.tree.tag_configure("closed", background="#e2e3e5", foreground="black")
-
-        self.tree.bind("<Double-1>", self.on_task_double_click)
-
+        # Scrollable table container
+        self.table_scroll = ctk.CTkScrollableFrame(
+            main_frame, 
+            fg_color="transparent",
+            corner_radius=0
+        )
+        self.table_scroll.pack(fill=tk.BOTH, expand=True, padx=2, pady=(0, 2))
 
     def archive_and_refresh(self):
         try:
@@ -78,75 +242,140 @@ class TaskManagerApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to archive tasks: {str(e)}")
 
-
     def open_view_archive(self):
         archive_window = ctk.CTkToplevel(self.root)
         archive_window.title("Archived Tasks")
         archive_window.geometry("900x600")
+        archive_window.configure(fg_color=("#F5F7FA", "#1A1C1E"))
 
-        main_frame = ctk.CTkFrame(archive_window)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        parent_container = ctk.CTkFrame(archive_window, fg_color=("#F5F7FA", "#1A1C1E"))
+        parent_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        columns = ("ID", "Status", "Priority", "Project", "Due", "Title")
-        self.archive_tree = ttk.Treeview(main_frame, columns=columns, show="headings")
+        main_frame = ctk.CTkFrame(
+            parent_container, 
+            fg_color=("#FFFFFF", "#242628"), 
+            corner_radius=8,
+            border_width=1,
+            border_color=("#E0E2E6", "#2D3033")
+        )
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.archive_tree.heading("ID", text="ID")
-        self.archive_tree.heading("Status", text="Status")
-        self.archive_tree.heading("Priority", text="Priority")
-        self.archive_tree.heading("Project", text="Project")
-        self.archive_tree.heading("Due", text="Due")
-        self.archive_tree.heading("Title", text="Title")
+        headers_frame = ctk.CTkFrame(main_frame, fg_color=("#FFFFFF", "#242628"), corner_radius=0)
+        headers_frame.pack(fill=tk.X, pady=(0, 5), padx=2)
 
-        self.archive_tree.column("ID", width=100)
-        self.archive_tree.column("Status", width=100)
-        self.archive_tree.column("Priority", width=80)
-        self.archive_tree.column("Project", width=120)
-        self.archive_tree.column("Due", width=100)
-        self.archive_tree.column("Title", width=350)
+        for i, (text, width, anchor) in enumerate(self.headers_def):
+            headers_frame.columnconfigure(i, weight=1 if text == "Title" else 0, minsize=width)
+            lbl = ctk.CTkLabel(
+                headers_frame, 
+                text=text, 
+                font=("Inter", 12, "bold"),
+                text_color=("#5F6368", "#9AA0A6"),
+                anchor=anchor
+            )
+            lbl.grid(row=0, column=i, sticky="nsew", padx=10, pady=8)
 
-        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=self.archive_tree.yview)
-        self.archive_tree.configure(yscroll=scrollbar.set)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.archive_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        self.archive_tree.bind("<Double-1>", self.on_archived_task_double_click)
+        self.archive_scroll = ctk.CTkScrollableFrame(
+            main_frame, 
+            fg_color="transparent",
+            corner_radius=0
+        )
+        self.archive_scroll.pack(fill=tk.BOTH, expand=True, padx=2, pady=(0, 2))
 
         self.refresh_archive_tasks()
 
     def refresh_archive_tasks(self):
-        for item in self.archive_tree.get_children():
-            self.archive_tree.delete(item)
+        for widget in self.archive_scroll.winfo_children():
+            widget.destroy()
 
         try:
-            import os
-            import json
             ARCHIVE_FILE = ".tasks/archive.jsonl"
             if not os.path.exists(ARCHIVE_FILE):
                 return
 
             with open(ARCHIVE_FILE, 'r', encoding='utf-8') as f:
+                idx = 0
                 for line in f:
-                    if not line.strip(): continue
+                    if not line.strip(): 
+                        continue
                     task = json.loads(line)
-                    due_val = task.get("due_date") if task.get("due_date") else "None"
-                    status_tag = task.get("status", "").lower()
-                    self.archive_tree.insert("", tk.END, values=(task.get("task_id"), task.get("status", "").upper(), task.get("priority_score"), task.get("project"), due_val, task.get("title")), tags=(status_tag,))
+                    task_id = task.get("task_id")
+                    status = task.get("status", "").upper()
+                    priority_score = task.get("priority_score", 0.0)
+                    project_val = task.get("project", "")
+                    due_date = task.get("due_date")
+                    due_val = due_date if due_date else "None"
+                    title_val = task.get("title", "")
+
+                    # Alternate row backgrounds
+                    row_color = ("#FFFFFF", "#242628") if idx % 2 == 0 else ("#F8FAFC", "#2D3033")
+                    hover_color = ("#F1F3F4", "#2F3134") if idx % 2 == 0 else ("#F1F5F9", "#383B3E")
+
+                    row_frame = ctk.CTkFrame(self.archive_scroll, fg_color=row_color, corner_radius=6)
+                    row_frame.pack(fill=tk.X, pady=2, padx=2)
+
+                    for i, (text, width, anchor) in enumerate(self.headers_def):
+                        row_frame.columnconfigure(i, weight=1 if text == "Title" else 0, minsize=width)
+
+                    # ID
+                    lbl_id = ctk.CTkLabel(row_frame, text=task_id, font=("Inter", 11, "bold"), text_color=("#1A1C1E", "#E8EAED"), anchor="center")
+                    lbl_id.grid(row=0, column=0, sticky="nsew", padx=10, pady=8)
+
+                    # Status Badge
+                    bg_c, text_c = self.get_status_style(status)
+                    lbl_status = ctk.CTkLabel(
+                        row_frame, 
+                        text=status, 
+                        fg_color=bg_c, 
+                        text_color=text_c, 
+                        corner_radius=12, 
+                        font=("Inter", 10, "bold"),
+                        width=100, 
+                        height=24
+                    )
+                    lbl_status.grid(row=0, column=1, padx=10, pady=8)
+
+                    # Priority Badge
+                    bg_p, text_p = self.get_priority_style(priority_score)
+                    lbl_priority = ctk.CTkLabel(
+                        row_frame, 
+                        text=f"{priority_score:.1f}", 
+                        fg_color=bg_p, 
+                        text_color=text_p, 
+                        corner_radius=12, 
+                        font=("Inter", 10, "bold"),
+                        width=60, 
+                        height=24
+                    )
+                    lbl_priority.grid(row=0, column=2, padx=10, pady=8)
+
+                    # Project
+                    lbl_project = ctk.CTkLabel(row_frame, text=project_val, font=("Inter", 11), text_color=("#1A1C1E", "#E8EAED"), anchor="w")
+                    lbl_project.grid(row=0, column=3, sticky="nsew", padx=10, pady=8)
+
+                    # Due
+                    lbl_due = ctk.CTkLabel(row_frame, text=due_val, font=("Inter", 11), text_color=("#1A1C1E", "#E8EAED"), anchor="center")
+                    lbl_due.grid(row=0, column=4, sticky="nsew", padx=10, pady=8)
+
+                    # Title
+                    lbl_title = ctk.CTkLabel(row_frame, text=title_val, font=("Inter", 11), text_color=("#1A1C1E", "#E8EAED"), anchor="w")
+                    lbl_title.grid(row=0, column=5, sticky="nsew", padx=10, pady=8)
+
+                    # Handlers
+                    self.bind_archive_double_click(row_frame, task_id)
+                    self.bind_hover_effect(row_frame, row_color, hover_color)
+
+                    idx += 1
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not load archived tasks: {str(e)}")
 
-
-    def on_archived_task_double_click(self, event):
-        selection = self.archive_tree.selection()
-        if not selection:
-            return
-        item = selection[0]
-        task_id = self.archive_tree.item(item, "values")[0]
-        self.open_archived_task_details(task_id)
+    def bind_archive_double_click(self, widget, task_id):
+        handler = lambda event, t_id=task_id: self.open_archived_task_details(t_id)
+        widget.bind("<Double-Button-1>", handler)
+        for child in widget.winfo_children():
+            child.bind("<Double-Button-1>", handler)
 
     def open_archived_task_details(self, task_id):
-        import os
-        import json
         ARCHIVE_FILE = ".tasks/archive.jsonl"
         found_task = None
 
@@ -168,7 +397,7 @@ class TaskManagerApp:
 
         details_window = ctk.CTkToplevel(self.root)
         details_window.title(f"Archived Task Details - {task_id}")
-        details_window.geometry("600x750")
+        details_window.geometry("600x560")
 
         # UI Fields - Read Only
         ctk.CTkLabel(details_window, text="Title:").grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
@@ -227,12 +456,9 @@ class TaskManagerApp:
             comments_listbox.insert("end", display_text + "\n")
         comments_listbox.configure(state="disabled")
 
-
-
     def refresh_tasks(self):
-        # Clear existing items
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        for widget in self.table_scroll.winfo_children():
+            widget.destroy()
 
         try:
             sync_issues()
@@ -240,15 +466,99 @@ class TaskManagerApp:
             cursor = conn.cursor()
             cursor.execute("SELECT task_id, status, priority_score, project, due_date, title FROM tasks ORDER BY priority_score ASC")
             rows = cursor.fetchall()
-
-            for row in rows:
-                due_val = row[4] if row[4] else "None"
-                status_tag = row[1].lower()
-                self.tree.insert("", tk.END, values=(row[0], row[1].upper(), row[2], row[3], due_val, row[5]), tags=(status_tag,))
-
             conn.close()
+
+            for idx, row in enumerate(rows):
+                task_id, status, priority_score, project_val, due_date, title_val = row
+                due_val = due_date if due_date else "None"
+                status_text = status.upper()
+
+                # Alternate row backgrounds
+                row_color = ("#FFFFFF", "#242628") if idx % 2 == 0 else ("#F8FAFC", "#2D3033")
+                hover_color = ("#F1F3F4", "#2F3134") if idx % 2 == 0 else ("#F1F5F9", "#383B3E")
+
+                row_frame = ctk.CTkFrame(self.table_scroll, fg_color=row_color, corner_radius=6)
+                row_frame.pack(fill=tk.X, pady=2, padx=2)
+
+                for i, (text, width, anchor) in enumerate(self.headers_def):
+                    row_frame.columnconfigure(i, weight=1 if text == "Title" else 0, minsize=width)
+
+                # ID
+                lbl_id = ctk.CTkLabel(row_frame, text=task_id, font=("Inter", 11, "bold"), text_color=("#1A1C1E", "#E8EAED"), anchor="center")
+                lbl_id.grid(row=0, column=0, sticky="nsew", padx=10, pady=8)
+
+                # Status Badge
+                bg_c, text_c = self.get_status_style(status)
+                lbl_status = ctk.CTkLabel(
+                    row_frame, 
+                    text=status_text, 
+                    fg_color=bg_c, 
+                    text_color=text_c, 
+                    corner_radius=12, 
+                    font=("Inter", 10, "bold"),
+                    width=100, 
+                    height=24
+                )
+                lbl_status.grid(row=0, column=1, padx=10, pady=8)
+
+                # Priority Badge
+                bg_p, text_p = self.get_priority_style(priority_score)
+                p_val = priority_score if priority_score is not None else 0.0
+                lbl_priority = ctk.CTkLabel(
+                    row_frame, 
+                    text=f"{p_val:.1f}", 
+                    fg_color=bg_p, 
+                    text_color=text_p, 
+                    corner_radius=12, 
+                    font=("Inter", 10, "bold"),
+                    width=60, 
+                    height=24
+                )
+                lbl_priority.grid(row=0, column=2, padx=10, pady=8)
+
+                # Project
+                lbl_project = ctk.CTkLabel(row_frame, text=project_val, font=("Inter", 11), text_color=("#1A1C1E", "#E8EAED"), anchor="w")
+                lbl_project.grid(row=0, column=3, sticky="nsew", padx=10, pady=8)
+
+                # Due
+                lbl_due = ctk.CTkLabel(row_frame, text=due_val, font=("Inter", 11), text_color=("#1A1C1E", "#E8EAED"), anchor="center")
+                lbl_due.grid(row=0, column=4, sticky="nsew", padx=10, pady=8)
+
+                # Title
+                lbl_title = ctk.CTkLabel(row_frame, text=title_val, font=("Inter", 11), text_color=("#1A1C1E", "#E8EAED"), anchor="w")
+                lbl_title.grid(row=0, column=5, sticky="nsew", padx=10, pady=8)
+
+                # Handlers
+                self.bind_double_click(row_frame, task_id)
+                self.bind_hover_effect(row_frame, row_color, hover_color)
+
         except Exception as e:
             messagebox.showerror("Error", f"Could not load tasks: {str(e)}")
+
+    def bind_double_click(self, widget, task_id):
+        handler = lambda event, t_id=task_id: self.open_task_details(t_id)
+        widget.bind("<Double-Button-1>", handler)
+        for child in widget.winfo_children():
+            child.bind("<Double-Button-1>", handler)
+
+    def bind_hover_effect(self, row_frame, normal_color, hover_color):
+        widgets = [row_frame] + list(row_frame.winfo_children())
+
+        def on_enter(e):
+            row_frame.configure(fg_color=hover_color)
+
+        def on_leave(e):
+            x, y = row_frame.winfo_pointerxy()
+            rx = row_frame.winfo_rootx()
+            ry = row_frame.winfo_rooty()
+            rw = row_frame.winfo_width()
+            rh = row_frame.winfo_height()
+            if not (rx <= x <= rx + rw and ry <= y <= ry + rh):
+                row_frame.configure(fg_color=normal_color)
+
+        for w in widgets:
+            w.bind("<Enter>", on_enter, add="+")
+            w.bind("<Leave>", on_leave, add="+")
 
     def submit_task(self):
         submit_window = ctk.CTkToplevel(self.root)
@@ -302,14 +612,6 @@ class TaskManagerApp:
         btn_submit = ctk.CTkButton(submit_window, text="Submit", command=on_submit)
         btn_submit.grid(row=3, column=1, pady=20)
 
-    def on_task_double_click(self, event):
-        selection = self.tree.selection()
-        if not selection:
-            return
-        item = selection[0]
-        task_id = self.tree.item(item, "values")[0]
-        self.open_task_details(task_id)
-
     def open_task_details(self, task_id):
         try:
             sync_issues()
@@ -332,7 +634,7 @@ class TaskManagerApp:
 
         details_window = ctk.CTkToplevel(self.root)
         details_window.title(f"Task Details - {task_id}")
-        details_window.geometry("600x750")
+        details_window.geometry("600x600")
 
         # UI Fields
         ctk.CTkLabel(details_window, text="Title:").grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
@@ -414,19 +716,15 @@ class TaskManagerApp:
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to update task: {str(e)}")
 
-        btn_save = ctk.CTkButton(details_window, text="Update Task", command=save_changes)
-        btn_save.grid(row=7, column=1, pady=20)
-
         # --- Comments Section ---
-        ctk.CTkLabel(details_window, text="Comments:").grid(row=8, column=0, sticky=tk.NW, padx=10, pady=5)
+        ctk.CTkLabel(details_window, text="Comments:").grid(row=7, column=0, sticky=tk.NW, padx=10, pady=5)
 
         comments_listbox = ctk.CTkTextbox(details_window, width=300, height=120)
-        comments_listbox.grid(row=8, column=1, sticky=tk.W, padx=10, pady=5)
+        comments_listbox.grid(row=7, column=1, sticky=tk.W, padx=10, pady=5)
 
         def load_comments():
             comments_listbox.delete("0.0", "end")
             try:
-                # Sync might be needed if comments were added externally or just now
                 sync_issues()
                 c_conn = get_connection()
                 c_cursor = c_conn.cursor()
@@ -441,10 +739,10 @@ class TaskManagerApp:
 
         load_comments()
 
-        ctk.CTkLabel(details_window, text="Add Comment:").grid(row=9, column=0, sticky=tk.NW, padx=10, pady=5)
+        ctk.CTkLabel(details_window, text="Add Comment:").grid(row=8, column=0, sticky=tk.NW, padx=10, pady=5)
 
         comment_frame = ctk.CTkFrame(details_window)
-        comment_frame.grid(row=9, column=1, sticky=tk.W, padx=10, pady=5)
+        comment_frame.grid(row=8, column=1, sticky=tk.W, padx=10, pady=5)
 
         entry_comment = ctk.CTkEntry(comment_frame, width=220)
         entry_comment.pack(side=tk.LEFT)
@@ -462,6 +760,8 @@ class TaskManagerApp:
         btn_add_comment = ctk.CTkButton(comment_frame, text="Add", command=on_add_comment)
         btn_add_comment.pack(side=tk.LEFT, padx=5)
 
+        btn_save = ctk.CTkButton(details_window, text="Update Task", command=save_changes)
+        btn_save.grid(row=9, column=1, sticky=tk.E, padx=10, pady=(20, 20))
 
 if __name__ == "__main__":
     ctk.set_appearance_mode("System")
