@@ -44,3 +44,4 @@ def submit(raw_string):
         f.write(json.dumps(entry) + "\n")
 
     print(task_id)
+    return task_id
