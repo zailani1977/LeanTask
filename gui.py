@@ -238,7 +238,7 @@ class TaskManagerApp:
             sync_issues()
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT task_id, status, priority_score, project, due_date, title FROM tasks")
+            cursor.execute("SELECT task_id, status, priority_score, project, due_date, title FROM tasks ORDER BY priority_score ASC")
             rows = cursor.fetchall()
 
             for row in rows:
