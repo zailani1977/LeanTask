@@ -3,6 +3,34 @@ import datetime
 import uuid
 from task_db import get_connection, ISSUES_FILE
 
+DUE_DATE_FORMAT = "%Y-%m-%d"
+
+def normalize_due_date(date_str, allow_empty=False):
+    value = (date_str or "").strip()
+    if not value:
+        if allow_empty:
+            return ""
+        raise ValueError("Due date must be in YYYY-MM-DD format (for example, 2026-06-05).")
+
+    try:
+        return datetime.date.fromisoformat(value).strftime(DUE_DATE_FORMAT)
+    except ValueError:
+        pass
+
+    try:
+        return datetime.datetime.fromisoformat(value.replace("Z", "+00:00")).date().strftime(DUE_DATE_FORMAT)
+    except ValueError as exc:
+        raise ValueError("Due date must be in YYYY-MM-DD format (for example, 2026-06-05).") from exc
+
+def format_due_date(due_value, empty_value="None"):
+    if not due_value:
+        return empty_value
+
+    try:
+        return normalize_due_date(due_value)
+    except ValueError:
+        return str(due_value).strip()
+
 def search(keyword):
     conn = get_connection()
     cursor = conn.cursor()
@@ -69,10 +97,12 @@ def comment(task_id, text):
         print(f"Comment added to {task_id}.")
 
 def due(task_id, date_str):
+    normalized_date = normalize_due_date(date_str, allow_empty=True)
+
     def change_due_date(task):
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         old_date = task.get("due_date")
-        task["due_date"] = date_str
+        task["due_date"] = normalized_date or None
 
         # audit log
         h = {
@@ -80,13 +110,16 @@ def due(task_id, date_str):
             "author": "user",
             "field": "due_date",
             "old_value": old_date,
-            "new_value": date_str
+            "new_value": normalized_date or None
         }
         task.setdefault("history", []).append(h)
         task["updated_at"] = now
 
     if _update_task_in_jsonl(task_id, change_due_date):
-        print(f"Due date of {task_id} changed to {date_str}.")
+        if normalized_date:
+            print(f"Due date of {task_id} changed to {normalized_date}.")
+        else:
+            print(f"Due date of {task_id} cleared.")
 
 def list_tasks(status):
     conn = get_connection()
@@ -102,7 +135,7 @@ def list_tasks(status):
     print(f"Tasks with status '{status}':")
     print(f"{'ID':^9} | {'STATUS':^11} | {'PRIORITY':^8} | {'PROJECT':^10} | {'DUE':^10} | TITLE | TAGS")
     for row in rows:
-        due_val = row[6] if row[6] else "None"
+        due_val = format_due_date(row[6])
         print(f"[{row[0]}] {row[1].upper():^11} | P: {row[2]:<5} | {row[3]:^10} | Due: {due_val:<6} | {row[4]} | {row[5]}")
     conn.close()
 
@@ -128,7 +161,7 @@ def view(task_id):
     print(f"Status:     {row[1].upper()}")
     print(f"Priority:   {row[2]}")
     print(f"Project:    {row[3]}")
-    print(f"Due Date:   {row[8] if row[8] else 'None'}")
+    print(f"Due Date:   {format_due_date(row[8])}")
     print(f"Tags:       {row[6]}")
     print(f"Blocked By: {row[7]}")
     print(f"Created:    {row[9]}")
@@ -373,7 +406,7 @@ def view_archive(task_id=None):
         print("Archived Tasks:")
         print(f"{'ID':^9} | {'STATUS':^11} | {'PRIORITY':^8} | {'PROJECT':^10} | {'DUE':^10} | TITLE | TAGS")
         for task in archived_tasks:
-            due_val = task.get("due_date") if task.get("due_date") else "None"
+            due_val = format_due_date(task.get("due_date"))
             status = task.get("status", "").upper()
             priority_val = task.get("priority_score", 0.0)
             project_val = task.get("project", "")
@@ -397,7 +430,7 @@ def view_archive(task_id=None):
         print(f"Status:     {found_task.get('status', '').upper()}")
         print(f"Priority:   {found_task.get('priority_score')}")
         print(f"Project:    {found_task.get('project')}")
-        print(f"Due Date:   {found_task.get('due_date') if found_task.get('due_date') else 'None'}")
+        print(f"Due Date:   {format_due_date(found_task.get('due_date'))}")
         print(f"Tags:       {found_task.get('tags')}")
         print(f"Blocked By: {found_task.get('blocked_by')}")
         print(f"Created:    {found_task.get('created_at')}")

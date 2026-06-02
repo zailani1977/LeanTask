@@ -43,7 +43,7 @@ TASK_SCHEMA = {
         },
         "due_date": {
             "type": ["string", "null"],
-            "format": "date-time"
+            "format": "date"
         },
         "created_at": {
             "type": "string",

@@ -122,7 +122,7 @@ The project code is divided into functional components as follows:
 | :--- | :--- | :--- |
 | **[task_cli.py](task_cli.py)** | Main Entry Point. Parses CLI flags and dispatches arguments to sub-modules. | `main()` |
 | **[task_cli_submit.py](task_cli_submit.py)** | Submits new raw tasks. Fast offline append with randomized `task_id` creation. | [submit(raw_string)](task_cli_submit.py#L8) |
-| **[task_cli_workbench.py](task_cli_workbench.py)** | Handles task mutations (descriptions, due dates, statuses, tags, comments, priorities) and views. | `search()`, `comment()`, `due()`, `list_tasks()`, `view()`, `state()`, `priority()`, `project()`, `title()`, `description()`, `tags()`, `blocked_by()` |
+| **[task_cli_workbench.py](task_cli_workbench.py)** | Handles task mutations (descriptions, due dates, statuses, tags, comments, priorities) and views, including due-date normalization to `YYYY-MM-DD`. | `search()`, `comment()`, `due()`, `list_tasks()`, `view()`, `state()`, `priority()`, `project()`, `title()`, `description()`, `tags()`, `blocked_by()` |
 | **[task_cli_report.py](task_cli_report.py)** | Computes task blocker hierarchies and urgency levels to output a daily Markdown report. | [report()](task_cli_report.py#L4) |
 | **[task_cli_bulk.py](task_cli_bulk.py)** | Formats bulk tasks to `stdout` as JSON arrays or imports tasks from `stdin`/file. | [export_tasks(status=None)](task_cli_bulk.py#L9), [import_tasks(file_path=None)](task_cli_bulk.py#L66) |
 | **[task_cli_clean.py](task_cli_clean.py)** | Manages database cache cleanup. Support soft cache wipes and hard logs resets. | [clean(hard=False)](task_cli_clean.py#L5) |
@@ -148,7 +148,7 @@ Stores the flattened current state of all tasks.
 - `description` (TEXT): Detailed description body.
 - `tags` (TEXT): JSON array of tags (strings).
 - `blocked_by` (TEXT): JSON array of task IDs blocking this task.
-- `due_date` (TEXT): ISO-8601 formatted datetime string or NULL.
+- `due_date` (TEXT): YYYY-MM-DD formatted date string or NULL.
 - `created_at` (TEXT): UTC timestamp of task submission.
 - `updated_at` (TEXT): UTC timestamp of last modification.
 - `raw_input` (TEXT): The original string submitted during task capture.

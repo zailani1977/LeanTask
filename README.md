@@ -161,6 +161,11 @@ python gui.py
 ```
 Double-click any task in the list to update its properties, add tags, or post comments.
 
+On **Windows**, you can also use the included hidden launcher:
+1. Double-click [`LeanTask GUI.vbs`](LeanTask%20GUI.vbs) to start the app without opening a console window.
+2. The launcher activates `venv`, runs `gui.py` with `pythonw`, then deactivates the environment when the GUI closes.
+3. If you need visible startup errors for troubleshooting, run [`launch_gui.cmd`](launch_gui.cmd) instead.
+
 ---
 
 ## CLI Command Reference Table
@@ -179,7 +184,7 @@ All commands are executed via [task_cli.py](task_cli.py).
 | `description`| `./task_cli.py description <task_id> "<desc>"` | Updates the detailed description. |
 | `tags` | `./task_cli.py tags <task_id> <tag1> [tag2 ...]` | Sets tags (e.g. `bug` `feature`). |
 | `blocked_by` | `./task_cli.py blocked_by <task_id> <dep_id1> ...`| Lists parent task IDs blocking this task. |
-| `due` | `./task_cli.py due <task_id> "<datetime>"` | Sets a due date (ISO 8601 format). |
+| `due` | `./task_cli.py due <task_id> "YYYY-MM-DD"` | Sets a due date using date-only format (for example, `2026-06-05`). |
 | `list` | `./task_cli.py list <status>` | Lists tasks by status, or use `all` to see everything. |
 | `view` | `./task_cli.py view <task_id>` | Prints the task details, edit history, and comments. |
 | `report` | `./task_cli.py report` | Generates a daily markdown progress report. |
@@ -202,6 +207,7 @@ All commands are executed via [task_cli.py](task_cli.py).
 ### Task Modification
 - **`state`**: Transitions a task between `open`, `in_progress`, `blocked`, `deferred`, and `closed`.
 - **`priority`**: Sets priority levels. Accepts floats `0.0` (lowest) to `5.0` (highest).
+- **`due`**: Stores due dates in `YYYY-MM-DD` format. If you paste a full ISO timestamp, LeanTask normalizes it to the date only.
 - **`blocked_by`**: Declares dependencies. If task `ab-1234` is blocked by `xy-5678`, it will show up as blocked in daily reports until `xy-5678` is closed.
   ```bash
   ./task_cli.py blocked_by ab-1234 xy-5678
@@ -249,7 +255,7 @@ python gui.py
   - **Status Dropdown**: Switch between task states (`open`, `in_progress`, `blocked`, `deferred`, `closed`).
   - **Priority (0.0 - 5.0)**: Update priority scores.
   - **Project**: Assign tasks to modules or project namespaces.
-  - **Due Date**: Manually adjust deadlines.
+  - **Due Date**: Manually adjust deadlines using `YYYY-MM-DD` format.
   - **Tags**: Edit tags using a comma-separated list.
   - **Update Task Button**: Clicking this writes updates to the log and auto-rehydrates the database cache.
 

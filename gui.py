@@ -6,7 +6,19 @@ from PIL import Image, ImageDraw
 from tkinter import ttk, messagebox, simpledialog
 from task_db import get_connection
 from task_cli_submit import submit
-from task_cli_workbench import state, priority, project, title, description, tags, due, comment, archive_tasks
+from task_cli_workbench import (
+    archive_tasks,
+    comment,
+    description,
+    due,
+    format_due_date,
+    normalize_due_date,
+    priority,
+    project,
+    state,
+    tags,
+    title,
+)
 from task_sync import sync_issues
 
 def ensure_icons():
@@ -303,7 +315,7 @@ class TaskManagerApp:
                     priority_score = task.get("priority_score", 0.0)
                     project_val = task.get("project", "")
                     due_date = task.get("due_date")
-                    due_val = due_date if due_date else "None"
+                    due_val = format_due_date(due_date)
                     title_val = task.get("title", "")
 
                     # Alternate row backgrounds
@@ -432,7 +444,7 @@ class TaskManagerApp:
 
         ctk.CTkLabel(details_window, text="Due Date:").grid(row=5, column=0, sticky=tk.W, padx=10, pady=5)
         entry_due = ctk.CTkEntry(details_window, width=150)
-        due_val = found_task.get("due_date") if found_task.get("due_date") else ""
+        due_val = format_due_date(found_task.get("due_date"), empty_value="")
         entry_due.insert(0, due_val)
         entry_due.configure(state="disabled")
         entry_due.grid(row=5, column=1, sticky=tk.W, padx=10, pady=5)
@@ -470,7 +482,7 @@ class TaskManagerApp:
 
             for idx, row in enumerate(rows):
                 task_id, status, priority_score, project_val, due_date, title_val = row
-                due_val = due_date if due_date else "None"
+                due_val = format_due_date(due_date)
                 status_text = status.upper()
 
                 # Alternate row backgrounds
@@ -573,7 +585,7 @@ class TaskManagerApp:
         text_desc = ctk.CTkTextbox(submit_window, width=250, height=80)
         text_desc.grid(row=1, column=1, padx=10, pady=5)
 
-        ctk.CTkLabel(submit_window, text="Due Date (Optional):").grid(row=2, column=0, sticky=tk.W, padx=10, pady=5)
+        ctk.CTkLabel(submit_window, text="Due Date (Optional, YYYY-MM-DD):").grid(row=2, column=0, sticky=tk.W, padx=10, pady=5)
         entry_due = ctk.CTkEntry(submit_window, width=250)
         entry_due.grid(row=2, column=1, padx=10, pady=5)
 
@@ -587,6 +599,14 @@ class TaskManagerApp:
                 messagebox.showerror("Error", "Title is required.")
                 return
 
+            due_text = entry_due.get().strip()
+
+            try:
+                normalized_due = normalize_due_date(due_text) if due_text else ""
+            except ValueError as e:
+                messagebox.showerror("Error", str(e))
+                return
+
             try:
                 task_id = submit(title_text)
             except Exception as e:
@@ -595,12 +615,11 @@ class TaskManagerApp:
 
             try:
                 desc_text = text_desc.get("1.0", "end").strip()
-                due_text = entry_due.get().strip()
 
                 if desc_text:
                     description(task_id, desc_text)
-                if due_text:
-                    due(task_id, due_text)
+                if normalized_due:
+                    due(task_id, normalized_due)
 
                 self.refresh_tasks()
                 submit_window.destroy()
@@ -662,9 +681,9 @@ class TaskManagerApp:
         entry_project.insert(0, row[3])
         entry_project.grid(row=4, column=1, sticky=tk.W, padx=10, pady=5)
 
-        ctk.CTkLabel(details_window, text="Due Date:").grid(row=5, column=0, sticky=tk.W, padx=10, pady=5)
+        ctk.CTkLabel(details_window, text="Due Date (YYYY-MM-DD):").grid(row=5, column=0, sticky=tk.W, padx=10, pady=5)
         entry_due = ctk.CTkEntry(details_window, width=150)
-        due_val = row[7] if row[7] else ""
+        due_val = format_due_date(row[7], empty_value="")
         entry_due.insert(0, due_val)
         entry_due.grid(row=5, column=1, sticky=tk.W, padx=10, pady=5)
 
@@ -702,8 +721,10 @@ class TaskManagerApp:
                 if entry_project.get() != row[3]:
                     project(task_id, entry_project.get())
 
-                if entry_due.get() != due_val:
-                    due(task_id, entry_due.get())
+                updated_due = entry_due.get().strip()
+                normalized_due = normalize_due_date(updated_due) if updated_due else ""
+                if normalized_due != due_val:
+                    due(task_id, normalized_due)
 
                 new_tags_str = entry_tags.get()
                 if new_tags_str != tags_str:
@@ -757,10 +778,26 @@ class TaskManagerApp:
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to add comment: {str(e)}")
 
-        btn_add_comment = ctk.CTkButton(comment_frame, text="Add", command=on_add_comment)
+        btn_add_comment = ctk.CTkButton(
+            comment_frame,
+            text="Add",
+            command=on_add_comment,
+            width=70,
+            font=("Inter", 12, "bold")
+        )
         btn_add_comment.pack(side=tk.LEFT, padx=5)
 
-        btn_save = ctk.CTkButton(details_window, text="Update Task", command=save_changes)
+        btn_save = ctk.CTkButton(
+            details_window,
+            text="Update Task",
+            command=save_changes,
+            fg_color=("#1E8E3E", "#34A853"),
+            hover_color=("#137333", "#1E8E3E"),
+            text_color="white",
+            font=("Inter", 13, "bold"),
+            width=160,
+            height=36
+        )
         btn_save.grid(row=9, column=1, sticky=tk.E, padx=10, pady=(20, 20))
 
 if __name__ == "__main__":

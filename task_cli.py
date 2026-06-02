@@ -62,9 +62,9 @@ def main():
     blocked_by_parser.add_argument("blocked_by", nargs="*", type=str, help="New blocked_by task IDs")
 
     # due
-    due_parser = subparsers.add_parser("due", help="Update the due date of a task")
+    due_parser = subparsers.add_parser("due", help="Update the due date of a task (YYYY-MM-DD)")
     due_parser.add_argument("task_id", type=str)
-    due_parser.add_argument("date", type=str, help="Due date (e.g. YYYY-MM-DD)")
+    due_parser.add_argument("date", type=str, help="Due date in YYYY-MM-DD format (e.g. 2026-06-05)")
 
     # list
     list_parser = subparsers.add_parser("list", help="List tasks by status")
@@ -129,7 +129,10 @@ def main():
     elif args.command == "blocked_by":
         blocked_by(args.task_id, args.blocked_by)
     elif args.command == "due":
-        due(args.task_id, args.date)
+        try:
+            due(args.task_id, args.date)
+        except ValueError as e:
+            parser.exit(2, f"{e}\n")
     elif args.command == "list":
         list_tasks(args.status)
     elif args.command == "view":

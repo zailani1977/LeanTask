@@ -8,6 +8,7 @@ from unittest.mock import patch
 import task_cli_submit
 import task_db
 import task_sync
+import task_cli_workbench
 from task_cli_workbench import _update_task_in_jsonl
 import task_cli_bulk
 
@@ -230,6 +231,66 @@ class TestTaskCLI(unittest.TestCase):
         self.assertEqual(synced["priority_score"], 4.5)
         self.assertCountEqual(synced["tags"], ["#ai", "#triaged"])
         self.assertEqual(synced["updated_at"], "2023-01-02T00:00:00Z")
+
+    def test_due_date_normalization(self):
+        """Due dates are normalized to YYYY-MM-DD when updated."""
+        task = {
+            "task_id": "ee-5555", "status": "open", "priority_score": 1.0,
+            "project": "test", "title": "Date Test", "description": "Normalize due date",
+            "tags": [], "blocked_by": [], "due_date": None, "created_at": "2023-01-01T00:00:00Z",
+            "updated_at": "2023-01-01T00:00:00Z", "raw_input": "Date Test", "history": [], "comments": []
+        }
+        with open(task_db.ISSUES_FILE, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(task) + "\n")
+
+        task_cli_workbench.due("ee-5555", "2026-06-05T14:30:00Z")
+
+        with open(task_db.ISSUES_FILE, 'r', encoding='utf-8') as f:
+            updated_task = json.loads(f.readline())
+
+        self.assertEqual(updated_task["due_date"], "2026-06-05")
+        self.assertEqual(updated_task["history"][-1]["new_value"], "2026-06-05")
+
+    def test_due_date_display_trims_time_in_active_and_archived_lists(self):
+        """List output shows only the date portion for active and archived tasks."""
+        active_task = {
+            "task_id": "ff-6666", "status": "open", "priority_score": 1.0,
+            "project": "test", "title": "Active Date", "description": "Active task",
+            "tags": [], "blocked_by": [], "due_date": "2026-06-05T14:30:00Z", "created_at": "2023-01-01T00:00:00Z",
+            "updated_at": "2023-01-01T00:00:00Z", "raw_input": "Active Date", "history": [], "comments": []
+        }
+        archived_task = {
+            "task_id": "gg-7777", "status": "closed", "priority_score": 1.0,
+            "project": "test", "title": "Archived Date", "description": "Archived task",
+            "tags": [], "blocked_by": [], "due_date": "2026-06-07T09:45:00Z", "created_at": "2023-01-01T00:00:00Z",
+            "updated_at": "2023-01-01T00:00:00Z", "raw_input": "Archived Date", "history": [], "comments": []
+        }
+
+        with open(task_db.ISSUES_FILE, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(active_task) + "\n")
+
+        with open(".tasks/archive.jsonl", 'w', encoding='utf-8') as f:
+            f.write(json.dumps(archived_task) + "\n")
+
+        task_db.hydrate_if_needed()
+
+        import io
+        import sys
+
+        active_out = io.StringIO()
+        sys.stdout = active_out
+        task_cli_workbench.list_tasks("all")
+        sys.stdout = sys.__stdout__
+
+        archived_out = io.StringIO()
+        sys.stdout = archived_out
+        task_cli_workbench.view_archive()
+        sys.stdout = sys.__stdout__
+
+        self.assertIn("2026-06-05", active_out.getvalue())
+        self.assertNotIn("2026-06-05T14:30:00Z", active_out.getvalue())
+        self.assertIn("2026-06-07", archived_out.getvalue())
+        self.assertNotIn("2026-06-07T09:45:00Z", archived_out.getvalue())
 
 if __name__ == '__main__':
     unittest.main()
